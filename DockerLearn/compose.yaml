@@ -1,0 +1,10 @@
+name: docker-learning
+
+services:
+  web:
+    build:
+      context: ./examples/nginx
+    image: docker-learning-nginx:local
+    ports:
+      - "127.0.0.1:8080:80"
+    restart: unless-stopped
