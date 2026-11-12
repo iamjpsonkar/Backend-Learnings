@@ -1,0 +1,8 @@
+<!DOCTYPE html>
+{% extends 'first_app/base_template.html' %}
+{% load static %}
+{% load my_extras %}
+    {% block body_block %}
+        <h3>Hello I am using Class Based Template View (CBTV) to print your name</h3>
+        <h1>{{ yourname }}</h1>
+    {% endblock %}

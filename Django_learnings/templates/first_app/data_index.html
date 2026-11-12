@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+{% extends 'first_app/base_template.html' %}
+{% load static %}
+    {% block body_block %}
+        <h1>Below is data from database</h1>
+        <table style="border:1px solid black;">
+            <tr style="border:1px solid black;">
+                <th style="border:1px solid black;">Site Name</th>
+                <th style="border:1px solid black;">Accessed Date</th>
+            </tr>
+            {% for acc in access_record %}
+            <tr style="border:1px solid black;">
+                <td style="border:1px solid black;">{{ acc.name }}</td>
+                <td style="border:1px solid black;">{{ acc.date }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% endblock %}

@@ -1,0 +1,11 @@
+{% extends 'first_app/first_app_base.html' %}
+
+{% block body_block %}
+<h1>List Of schools</h1>
+<ol>
+    {% for school in schools %}
+    <li><h2><a href="{{school.id}}">{{school.name}}</a> <a href="{% url 'first_app:delete' pk=school.pk %}" class="btn btn-danger">Delete</a></h2></li>
+    {% endfor %}
+</ol>
+<a href="{% url 'first_app:create' %}" class="btn btn-success">Create</a>
+{% endblock %}

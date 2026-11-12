@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+{% extends 'first_app/base_template.html' %}
+{% load static %}
+    {% block body_block %}
+        <h1>Basic Form</h1>
+        <div class="container">
+            <form method="POST">
+                {{ form.as_p }}
+                {% csrf_token %}
+                <input type="Submit" value="Submit"/>
+            </form>
+        </div>
+    {% endblock %}

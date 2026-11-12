@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+{% extends 'first_app/base_template.html' %}
+{% load static %}
+{% load my_extras %}
+    {% block body_block %}
+        <h3>Hello I am using templates/first_app/index.html to print your name</h3>
+        <h3>{{ myname }}</h3>
+        <p><strong>text:</strong> {{ text }}</p>
+        <p><strong>text in CAPITAL:</strong> {{ text|upper }}</p>
+        <p><strong>text in cut2 ' ' and '.' :</strong> {{ text|cut2:"' ','.'" }}</p>
+        <p><strong>text in cut3 ' ' and '.' :</strong> {{ text|cut3:"' ','.'" }}</p>
+        <p><strong>number:</strong> {{ number }}</p>
+        <p><strong>number+998:</strong> {{ number|add:"998" }}</p>
+        <p><strong>Django Image</p>
+        <img src="{% static 'images/DjangoFeaturedImage.jpeg' %}" alt="Image Not Found!!!" width="600px" height="400px"/>
+    {% endblock %}

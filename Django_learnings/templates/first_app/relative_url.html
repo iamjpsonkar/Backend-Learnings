@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+{% extends 'first_app/base_template.html' %}
+{% load static %}
+    {% block body_block %}
+        <h1>hi I am Relative URL page</h1>
+        <a href="{% url 'first_app:other_page' %}">Go to other Page!!</a>
+        <br/>
+        <a href="{% url 'admin:index' %}">Admin Page</a>
+        <br/>
+        <a href="{% url 'index' %}">Index Page</a>
+    {% endblock %}
