@@ -1,0 +1,126 @@
+id: postgres-backup-restore
+title: "Disaster Recovery: PostgreSQL Backup and Restore"
+description: >
+  Practice real disaster recovery procedures for PostgreSQL: perform logical
+  backups with pg_dump, physical backups with pg_basebackup, restore from backup
+  to a new instance, verify data integrity, and measure RTO/RPO. This lab
+  simulates an actual production database failure and recovery scenario.
+
+difficulty: intermediate
+estimated_time: "60 minutes"
+category: disaster-recovery
+
+prerequisites:
+  - "Data services running: make start-data"
+  - "psql and pg_dump installed locally (or use Docker)"
+
+tools_required:
+  - psql
+  - pg_dump
+
+docker_profiles:
+  - data
+
+ports_used:
+  - 5432
+  - 5433
+
+learning_objectives:
+  - Perform logical backup with pg_dump (SQL format and custom format)
+  - Perform parallel dump with pg_dump --jobs
+  - Restore from backup with psql and pg_restore
+  - Restore to a point-in-time using WAL (conceptual — simulated here)
+  - Verify backup integrity before disaster strikes
+  - Measure and improve RTO (Recovery Time Objective)
+  - Understand the difference between hot and cold backups
+
+tasks:
+  - id: verify-database
+    description: "Connect to PostgreSQL and verify the lab data exists"
+    hints:
+      - "PGPASSWORD=labpassword123 psql -h localhost -p 5432 -U labuser -d labdb -c '\\dt'"
+      - "Should show products and orders tables"
+      - "If not seeded: run the postgres-basics lab first, or apply init SQL manually"
+      - "SELECT COUNT(*) FROM products;  -- should return 5"
+
+  - id: logical-backup-sql
+    description: "Create a full SQL logical backup of the labdb database"
+    hints:
+      - "mkdir ~/backups"
+      - "PGPASSWORD=labpassword123 pg_dump -h localhost -p 5432 -U labuser -d labdb > ~/backups/labdb-$(date +%Y%m%d-%H%M%S).sql"
+      - "Inspect the backup: head -50 ~/backups/labdb-*.sql"
+      - "Shows: SET statements, CREATE TABLE, COPY/INSERT, CONSTRAINTS"
+
+  - id: logical-backup-custom
+    description: "Create a compressed custom-format backup (required for pg_restore)"
+    hints:
+      - "PGPASSWORD=labpassword123 pg_dump -h localhost -p 5432 -U labuser -d labdb -Fc -f ~/backups/labdb.dump"
+      - "Custom format is compressed and parallel-restore compatible"
+      - "Check: pg_restore --list ~/backups/labdb.dump | head -20"
+      - "Shows each object and its restore order"
+
+  - id: simulate-disaster
+    description: "Simulate data loss by dropping the orders table"
+    hints:
+      - "Record current state: PGPASSWORD=labpassword123 psql -h localhost -p 5432 -U labuser -d labdb -c 'SELECT COUNT(*) FROM orders;'"
+      - "DROP TABLE: PGPASSWORD=labpassword123 psql -h localhost -p 5432 -U labuser -d labdb -c 'DROP TABLE orders;'"
+      - "Verify disaster: psql ... -c '\\dt'  (orders should be gone)"
+
+  - id: restore-from-backup
+    description: "Restore the orders table from the backup"
+    hints:
+      - "Restore only orders table from custom dump: PGPASSWORD=labpassword123 pg_restore -h localhost -p 5432 -U labuser -d labdb -t orders ~/backups/labdb.dump"
+      - "Or from SQL backup: PGPASSWORD=labpassword123 psql -h localhost -p 5432 -U labuser -d labdb -c \"\\i ~/backups/labdb-latest.sql\""
+      - "Note: SQL restore may fail on duplicate tables — need to drop first"
+      - "For table-only restore: psql ... < <(grep -A1000 'CREATE TABLE orders' ~/backups/*.sql | grep -B1000 '^--')"
+
+  - id: verify-recovery
+    description: "Verify the restored data matches the original backup"
+    hints:
+      - "Count rows: PGPASSWORD=labpassword123 psql -h localhost -p 5432 -U labuser -d labdb -c 'SELECT COUNT(*) FROM orders;'"
+      - "Compare with pre-disaster count"
+      - "Spot check data: SELECT * FROM orders LIMIT 5;"
+      - "Record your RTO: how long did restore take from the moment of simulated failure?"
+
+  - id: restore-to-new-instance
+    description: "Start a second PostgreSQL container and restore the full backup there"
+    hints:
+      - "docker run -d --name pg-restore -e POSTGRES_USER=labuser -e POSTGRES_PASSWORD=labpassword123 -e POSTGRES_DB=restored_db -p 5433:5432 postgres:16-alpine"
+      - "Wait for startup: sleep 5"
+      - "Restore: PGPASSWORD=labpassword123 pg_restore -h localhost -p 5433 -U labuser -d restored_db ~/backups/labdb.dump"
+      - "Verify: PGPASSWORD=labpassword123 psql -h localhost -p 5433 -U labuser -d restored_db -c '\\dt'"
+
+validation_steps:
+  - "PostgreSQL is running on port 5432"
+  - "pg_dump backup file exists"
+  - "Data restored successfully after simulated disaster"
+
+grading_rules:
+  - check: "PGPASSWORD=labpassword123 psql -h localhost -p 5432 -U labuser -d labdb -c 'SELECT 1' -q -t 2>/dev/null | grep -q 1"
+    points: 15
+  - check: "ls ~/backups/*.sql 2>/dev/null | head -1 | xargs -I{} wc -l {} | awk '{print $1}' | grep -qE '^[1-9][0-9]+'"
+    points: 25
+  - check: "ls ~/backups/*.dump 2>/dev/null | head -1 | xargs -I{} wc -c {} | awk '{print $1}' | grep -qE '^[1-9]'"
+    points: 25
+  - check: "PGPASSWORD=labpassword123 psql -h localhost -p 5432 -U labuser -d labdb -c 'SELECT COUNT(*) FROM orders' -t 2>/dev/null | grep -qE '^[[:space:]]*[1-9]'"
+    points: 20
+  - check: "docker ps --format '{{.Names}}' 2>/dev/null | grep -q pg-restore"
+    points: 15
+
+cleanup_steps:
+  - "docker stop pg-restore 2>/dev/null || true"
+  - "docker rm pg-restore 2>/dev/null || true"
+  - "rm -f ~/backups/labdb*.sql ~/backups/labdb*.dump 2>/dev/null || true"
+
+related_docs:
+  - "../../../23-disaster-recovery/README.md"
+
+related_cloud_services:
+  - "AWS RDS Automated Backups"
+  - "AWS RDS Snapshots"
+  - "Azure Database for PostgreSQL Backup"
+  - "GCP Cloud SQL Automated Backups"
+
+local_only: true
+cost_warning: null
+safety_warning: null

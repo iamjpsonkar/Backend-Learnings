@@ -1,0 +1,100 @@
+id: slo-design
+title: "SRE: Design and Implement SLOs and Error Budgets"
+description: >
+  Learn Service Level Objectives (SLOs) by defining them for the lab platform's
+  own services. You will write SLO definitions, create Prometheus recording rules
+  to compute SLIs, build an error budget dashboard in Grafana, and implement
+  an alert that fires when the error budget is consumed.
+
+difficulty: intermediate
+estimated_time: "45 minutes"
+category: sre
+
+prerequisites:
+  - "Observability stack running: make start-observability && make start-core"
+  - "Completed: prometheus-basics lab"
+
+tools_required:
+  - curl
+
+docker_profiles:
+  - observability
+  - core
+
+ports_used:
+  - 9090
+  - 3000
+
+learning_objectives:
+  - Understand SLI, SLO, and error budget concepts
+  - Write Prometheus recording rules for availability SLIs
+  - Calculate error budget consumption
+  - Create a Grafana dashboard with error budget burn rate
+  - Set up alerts for budget exhaustion
+
+tasks:
+  - id: define-slo
+    description: "Write the SLO definition for the Lab API: 99.5% availability, 200ms p95 latency"
+    hints:
+      - "Write a YAML file documenting: service, SLI type, SLO target, measurement window, error budget"
+      - "Error budget = 1 - SLO = 0.5% = 0.005"
+      - "Over 30 days: error budget = 0.005 * 30 * 24 * 60 = 216 minutes of downtime allowed"
+
+  - id: recording-rules
+    description: "Add Prometheus recording rules to compute the availability SLI for the Lab API"
+    hints:
+      - "Create a recording rule file in configs/prometheus/rules/"
+      - "Record: job:api_availability:rate5m = 1 - rate(http_errors_total[5m]) / rate(http_requests_total[5m])"
+      - "Reload Prometheus: curl -X POST http://localhost:9090/-/reload"
+
+  - id: error-budget-query
+    description: "Write a PromQL query that shows the remaining error budget as a percentage"
+    hints:
+      - "Error budget consumed = 1 - (actual availability / SLO target)"
+      - "Example: 1 - (avg_over_time(availability[30d]) / 0.995)"
+      - "Run this in the Prometheus UI"
+
+  - id: grafana-panel
+    description: "Create a Grafana panel showing the error budget burn rate"
+    hints:
+      - "Open Grafana > Create Dashboard > Add Panel"
+      - "Use the error budget query as the metric"
+      - "Set visualization to Gauge or Time series"
+      - "Add a threshold at 0 (red = budget exhausted)"
+
+  - id: alert-rule
+    description: "Create a Prometheus alert that fires when error budget drops below 10%"
+    hints:
+      - "Add to configs/prometheus/rules/lab-slo-alerts.yml"
+      - "Condition: remaining_error_budget_percent < 10"
+      - "Set 'for: 5m' to avoid flapping"
+
+validation_steps:
+  - "Prometheus is up and returns SLI recording rule metrics"
+  - "Error budget query returns a valid result in Prometheus UI"
+  - "Grafana dashboard with error budget panel exists"
+
+grading_rules:
+  - check: "curl -sf http://localhost:9090/-/ready"
+    points: 10
+  - check: "curl -sf http://localhost:3000/api/health | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if d.get('database')=='ok' else 1)\""
+    points: 20
+  - check: "ls configs/prometheus/rules/*.yml | wc -l | awk '{exit ($1 >= 1) ? 0 : 1}'"
+    points: 30
+  - check: "curl -sf http://localhost:3000/api/dashboards/home -u admin:adminpassword123 | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0)\""
+    points: 40
+
+cleanup_steps: []
+
+related_docs:
+  - "../../../16-sre/README.md"
+  - "../../../15-observability/README.md"
+
+related_cloud_services:
+  - "Google Cloud SLO Monitoring"
+  - "AWS CloudWatch Composite Alarms"
+  - "Datadog SLOs"
+
+local_only: true
+cost_warning: null
+safety_warning: null

@@ -1,0 +1,97 @@
+{
+  "vhosts": [
+    { "name": "/" }
+  ],
+  "exchanges": [
+    {
+      "name": "lab.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "lab.fanout",
+      "vhost": "/",
+      "type": "fanout",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "lab.dlx",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "lab.orders",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "lab.dlx",
+        "x-dead-letter-routing-key": "dead",
+        "x-message-ttl": 86400000
+      }
+    },
+    {
+      "name": "lab.notifications",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "lab.dead-letters",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "lab.events",
+      "vhost": "/",
+      "destination": "lab.orders",
+      "destination_type": "queue",
+      "routing_key": "order.*",
+      "arguments": {}
+    },
+    {
+      "source": "lab.events",
+      "vhost": "/",
+      "destination": "lab.notifications",
+      "destination_type": "queue",
+      "routing_key": "notification.*",
+      "arguments": {}
+    },
+    {
+      "source": "lab.dlx",
+      "vhost": "/",
+      "destination": "lab.dead-letters",
+      "destination_type": "queue",
+      "routing_key": "dead",
+      "arguments": {}
+    }
+  ],
+  "policies": [
+    {
+      "name": "ha-policy",
+      "vhost": "/",
+      "pattern": "lab.*",
+      "definition": {
+        "ha-mode": "all",
+        "ha-sync-mode": "automatic"
+      },
+      "priority": 0,
+      "apply-to": "all"
+    }
+  ]
+}

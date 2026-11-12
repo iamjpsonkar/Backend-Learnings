@@ -1,0 +1,121 @@
+id: s3-operations
+title: "AWS S3 Operations with LocalStack"
+description: >
+  Practice AWS S3 operations using LocalStack — a fully functional local AWS emulator.
+  You will create buckets, upload and download objects, set bucket policies, enable
+  versioning, create lifecycle rules, and generate presigned URLs.
+  All commands run against LocalStack on localhost:4566 — no real AWS account needed.
+
+difficulty: intermediate
+estimated_time: "45 minutes"
+category: aws-local
+
+prerequisites:
+  - "LocalStack running: make start-aws-local"
+  - "aws CLI installed (make doctor)"
+  - "Familiarity with S3 concepts"
+
+tools_required:
+  - aws
+  - curl
+
+docker_profiles:
+  - aws-local
+
+ports_used:
+  - 4566
+
+learning_objectives:
+  - Create and list S3 buckets
+  - Upload, download, and delete objects
+  - Set bucket policies
+  - Enable versioning and understand version IDs
+  - Create lifecycle rules
+  - Generate presigned URLs
+
+tasks:
+  - id: configure-aws-cli
+    description: "Configure the AWS CLI to point to LocalStack"
+    hints:
+      - "Set endpoint URL for all commands: --endpoint-url=http://localhost:4566"
+      - "Or export: export AWS_ENDPOINT_URL=http://localhost:4566"
+      - "Region and credentials: AWS_DEFAULT_REGION=us-east-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test"
+      - "Verify LocalStack is ready: curl http://localhost:4566/health"
+
+  - id: create-bucket
+    description: "Create a bucket named 'lab-my-bucket' in LocalStack"
+    hints:
+      - "Command: aws --endpoint-url=http://localhost:4566 s3 mb s3://lab-my-bucket"
+      - "List buckets: aws --endpoint-url=http://localhost:4566 s3 ls"
+
+  - id: upload-objects
+    description: "Upload at least 3 files to your bucket"
+    hints:
+      - "Create test files: echo 'hello' > file1.txt && echo 'world' > file2.txt"
+      - "Upload: aws --endpoint-url=http://localhost:4566 s3 cp file1.txt s3://lab-my-bucket/"
+      - "Upload a folder: aws --endpoint-url=http://localhost:4566 s3 sync ./mydir s3://lab-my-bucket/mydir/"
+
+  - id: enable-versioning
+    description: "Enable versioning on your bucket"
+    hints:
+      - "Command: aws --endpoint-url=http://localhost:4566 s3api put-bucket-versioning --bucket lab-my-bucket --versioning-configuration Status=Enabled"
+      - "Upload the same file again to create a new version"
+      - "List versions: aws --endpoint-url=http://localhost:4566 s3api list-object-versions --bucket lab-my-bucket"
+
+  - id: presigned-url
+    description: "Generate a presigned URL for one of your objects (valid for 300 seconds)"
+    hints:
+      - "Command: aws --endpoint-url=http://localhost:4566 s3 presign s3://lab-my-bucket/file1.txt --expires-in 300"
+      - "The URL includes a signature — test it with curl"
+
+  - id: bucket-policy
+    description: "Set a bucket policy to allow public read for all objects"
+    hints:
+      - "Create policy.json with the public read policy"
+      - "Command: aws --endpoint-url=http://localhost:4566 s3api put-bucket-policy --bucket lab-my-bucket --policy file://policy.json"
+
+  - id: list-and-delete
+    description: "List all objects in the bucket, then delete all of them and remove the bucket"
+    hints:
+      - "List: aws --endpoint-url=http://localhost:4566 s3 ls s3://lab-my-bucket --recursive"
+      - "Delete all: aws --endpoint-url=http://localhost:4566 s3 rm s3://lab-my-bucket --recursive"
+      - "Remove bucket: aws --endpoint-url=http://localhost:4566 s3 rb s3://lab-my-bucket"
+
+validation_steps:
+  - "LocalStack is running: curl http://localhost:4566/health shows s3: available"
+  - "Bucket lab-my-bucket was created and can be listed"
+  - "Files were uploaded successfully"
+  - "Versioning was enabled"
+
+grading_rules:
+  - check: "curl -sf http://localhost:4566/health | grep -q s3"
+    points: 10
+  - check: "aws --endpoint-url=http://localhost:4566 s3 ls | grep -q lab-my-bucket"
+    points: 20
+  - check: "aws --endpoint-url=http://localhost:4566 s3api get-bucket-versioning --bucket lab-my-bucket | grep -q Enabled"
+    points: 25
+  - check: "aws --endpoint-url=http://localhost:4566 s3 ls s3://lab-my-bucket | wc -l | awk '{exit ($1 >= 1) ? 0 : 1}'"
+    points: 20
+  - check: "aws --endpoint-url=http://localhost:4566 s3api get-bucket-policy --bucket lab-my-bucket"
+    points: 25
+
+cleanup_steps:
+  - "aws --endpoint-url=http://localhost:4566 s3 rm s3://lab-my-bucket --recursive || true"
+  - "aws --endpoint-url=http://localhost:4566 s3 rb s3://lab-my-bucket || true"
+  - "rm -f file1.txt file2.txt file3.txt policy.json"
+
+related_docs:
+  - "../../../05-aws/05-storage/s3.md"
+
+related_cloud_services:
+  - "AWS S3 (Simple Storage Service)"
+  - "Azure Blob Storage"
+  - "GCP Cloud Storage"
+
+local_only: false
+optional_real_cloud: >
+  To run against real AWS S3, remove --endpoint-url from all commands.
+  Ensure your AWS credentials are configured with s3:* permissions.
+  Commands marked [REAL CLOUD - OPTIONAL] show the real-cloud equivalent.
+cost_warning: "Real AWS S3 charges per GB stored and per request. Test data costs under $0.01."
+safety_warning: null

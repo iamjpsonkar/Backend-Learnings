@@ -1,0 +1,127 @@
+id: rabbitmq-basics
+title: "RabbitMQ: Message Queues and Pub/Sub Patterns"
+description: >
+  Learn messaging fundamentals with RabbitMQ — the most widely used open-source
+  message broker. Practice the core messaging patterns: work queues, publish/subscribe,
+  routing, and topics. Implement a producer and consumer in Python using the pika library.
+  RabbitMQ is running as part of the data profile.
+
+difficulty: beginner
+estimated_time: "60 minutes"
+category: serverless-events
+
+prerequisites:
+  - "Data services running: make start-data"
+  - "Python 3 and pika installed: pip3 install pika"
+
+tools_required:
+  - curl
+  - python3
+
+docker_profiles:
+  - data
+
+ports_used:
+  - 5672
+  - 15672
+
+learning_objectives:
+  - Understand exchanges, queues, and bindings in AMQP
+  - Implement a work queue (task queue) with acknowledgements
+  - Use fanout exchange for pub/sub broadcasting
+  - Use direct and topic exchanges for selective routing
+  - Monitor queues with the RabbitMQ Management UI
+  - Handle message durability and delivery guarantees
+  - Use dead letter queues for failed messages
+
+tasks:
+  - id: verify-rabbitmq
+    description: "Verify RabbitMQ is running and access the Management UI"
+    hints:
+      - "Management UI: http://localhost:15672"
+      - "Login: labadmin / labpassword123"
+      - "Check queues, exchanges, and connections"
+      - "Also verify port 5672 (AMQP): nc -zv localhost 5672"
+
+  - id: install-pika
+    description: "Install the pika Python library for AMQP messaging"
+    hints:
+      - "pip3 install pika"
+      - "Test: python3 -c 'import pika; print(pika.__version__)'"
+
+  - id: hello-world-queue
+    description: "Write a producer that sends 5 messages to a 'hello' queue, and a consumer that receives them"
+    hints:
+      - "Producer: connection = pika.BlockingConnection(pika.ConnectionParameters('localhost', 5672, '/', pika.PlainCredentials('labadmin','labpassword123')))"
+      - "channel = connection.channel()"
+      - "channel.queue_declare(queue='hello', durable=True)"
+      - "channel.basic_publish(exchange='', routing_key='hello', body='Hello World!', properties=pika.BasicProperties(delivery_mode=2))"
+      - "Consumer: channel.basic_consume(queue='hello', on_message_callback=callback, auto_ack=True)"
+      - "channel.start_consuming()"
+
+  - id: work-queue
+    description: "Implement a work queue with manual acknowledgements — simulate slow workers"
+    hints:
+      - "Set auto_ack=False in basic_consume"
+      - "In callback: time.sleep(body.count(b'.')); ch.basic_ack(delivery_tag=method.delivery_tag)"
+      - "Send messages with dots to indicate work: 'task..' or 'long task....'"
+      - "Set channel.basic_qos(prefetch_count=1) for fair dispatch"
+
+  - id: fanout-pubsub
+    description: "Implement pub/sub: one publisher broadcasts to multiple consumers via fanout exchange"
+    hints:
+      - "Declare fanout exchange: channel.exchange_declare(exchange='logs', exchange_type='fanout')"
+      - "Each consumer declares its own exclusive queue and binds to exchange"
+      - "result = channel.queue_declare(queue='', exclusive=True)"
+      - "queue_name = result.method.queue"
+      - "channel.queue_bind(exchange='logs', queue=queue_name)"
+      - "Publisher: channel.basic_publish(exchange='logs', routing_key='', body='broadcast message')"
+
+  - id: topic-routing
+    description: "Use topic exchange to route messages by pattern (e.g., 'order.created', 'order.shipped')"
+    hints:
+      - "Exchange type: topic"
+      - "Routing key patterns: 'order.#' matches all order events"
+      - "Binding: channel.queue_bind(exchange='topics', queue='order_queue', routing_key='order.#')"
+      - "Publish with: routing_key='order.created'"
+      - "Topic routing is the most flexible — used in AWS SNS topic subscriptions"
+
+  - id: management-api
+    description: "Use the RabbitMQ Management REST API to list queues and get queue stats"
+    hints:
+      - "List queues: curl -u labadmin:labpassword123 http://localhost:15672/api/queues"
+      - "Queue details: curl -u labadmin:labpassword123 http://localhost:15672/api/queues/%2F/hello"
+      - "Exchanges: curl -u labadmin:labpassword123 http://localhost:15672/api/exchanges"
+      - "Overview: curl -u labadmin:labpassword123 http://localhost:15672/api/overview"
+
+validation_steps:
+  - "RabbitMQ is running on port 5672"
+  - "Management UI accessible on port 15672"
+  - "hello queue exists with messages"
+
+grading_rules:
+  - check: "curl -sf -u labadmin:labpassword123 http://localhost:15672/api/overview 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if d.get('rabbitmq_version') else 1)\""
+    points: 20
+  - check: "python3 -c 'import pika; print(\"ok\")' 2>/dev/null | grep -q ok"
+    points: 15
+  - check: "python3 -c \"import pika; conn = pika.BlockingConnection(pika.ConnectionParameters('localhost',5672,'/',pika.PlainCredentials('labadmin','labpassword123'))); ch = conn.channel(); ch.queue_declare(queue='grade-test',durable=False); ch.basic_publish(exchange='',routing_key='grade-test',body='test'); conn.close(); print('ok')\" 2>/dev/null | grep -q ok"
+    points: 35
+  - check: "curl -sf -u labadmin:labpassword123 http://localhost:15672/api/queues 2>/dev/null | python3 -c \"import sys,json; qs=json.load(sys.stdin); names=[q['name'] for q in qs]; exit(0 if names else 1)\" 2>/dev/null && echo pass"
+    points: 30
+
+cleanup_steps:
+  - "python3 -c \"import pika; conn = pika.BlockingConnection(pika.ConnectionParameters('localhost',5672,'/',pika.PlainCredentials('labadmin','labpassword123'))); ch = conn.channel(); ch.queue_delete(queue='hello'); ch.queue_delete(queue='grade-test'); conn.close()\" 2>/dev/null || true"
+
+related_docs:
+  - "../../../16-serverless/README.md"
+
+related_cloud_services:
+  - "AWS SQS"
+  - "AWS SNS"
+  - "Azure Service Bus"
+  - "GCP Pub/Sub"
+  - "Google Cloud Tasks"
+
+local_only: true
+cost_warning: null
+safety_warning: null

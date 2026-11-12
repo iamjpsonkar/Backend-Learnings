@@ -1,0 +1,112 @@
+id: vault-basics
+title: "HashiCorp Vault: Secrets Management Fundamentals"
+description: >
+  Learn to use HashiCorp Vault for secrets management. You will write and read secrets,
+  understand the KV secret engine, create policies, generate dynamic tokens, and
+  learn why Vault is better than plain environment variables or config files.
+
+difficulty: beginner
+estimated_time: "45 minutes"
+category: security
+
+prerequisites:
+  - "Security services running: make start-security"
+  - "vault CLI installed (optional — can use HTTP API)"
+
+tools_required:
+  - curl
+
+docker_profiles:
+  - security
+
+ports_used:
+  - 8200
+
+learning_objectives:
+  - Write and read secrets from Vault KV engine
+  - Understand Vault tokens and authentication
+  - Create access policies (read-only, read-write)
+  - List secret paths
+  - Delete secrets and understand versioning with KV v2
+  - Use the Vault HTTP API directly
+
+tasks:
+  - id: check-vault
+    description: "Verify Vault is running and check its status"
+    hints:
+      - "Command: curl http://localhost:8200/v1/sys/health"
+      - "Or with vault CLI: export VAULT_ADDR=http://localhost:8200 && vault status"
+      - "Vault runs in dev mode — it is already unsealed"
+
+  - id: write-secret
+    description: "Write a secret to the KV v2 engine at path 'secret/lab/myapp'"
+    hints:
+      - "With vault CLI: vault kv put secret/lab/myapp username=admin password=mysecret"
+      - "With curl: curl -H 'X-Vault-Token: dev-root-token' -X POST -d '{\"data\":{\"username\":\"admin\"}}' http://localhost:8200/v1/secret/data/lab/myapp"
+      - "The default root token is: dev-root-token"
+
+  - id: read-secret
+    description: "Read the secret back from Vault"
+    hints:
+      - "vault CLI: vault kv get secret/lab/myapp"
+      - "curl: curl -H 'X-Vault-Token: dev-root-token' http://localhost:8200/v1/secret/data/lab/myapp"
+      - "Note the 'data.data' nesting in the JSON response for KV v2"
+
+  - id: update-secret
+    description: "Update the secret — add a new key 'api_key' to it"
+    hints:
+      - "KV v2 creates a new version on each write"
+      - "vault kv patch: vault kv patch secret/lab/myapp api_key=abc123"
+      - "Or use put (replaces all keys): vault kv put secret/lab/myapp username=admin password=mysecret api_key=abc123"
+
+  - id: create-policy
+    description: "Create a read-only Vault policy named 'myapp-readonly'"
+    hints:
+      - "Write policy HCL to a file, then: vault policy write myapp-readonly policy.hcl"
+      - "Policy content: path \"secret/data/lab/myapp\" { capabilities = [\"read\"] }"
+      - "Verify: vault policy read myapp-readonly"
+
+  - id: create-token
+    description: "Create a token with the myapp-readonly policy"
+    hints:
+      - "vault token create -policy=myapp-readonly -ttl=1h"
+      - "Copy the token value from the output"
+      - "Test it: curl -H 'X-Vault-Token: <new-token>' http://localhost:8200/v1/secret/data/lab/myapp"
+
+  - id: revoke-token
+    description: "Revoke the token you created"
+    hints:
+      - "vault token revoke <token>"
+      - "Verify it's revoked by trying to use it — should get 403"
+
+validation_steps:
+  - "Vault health endpoint returns sealed=false"
+  - "secret/lab/myapp can be read with root token"
+  - "Policy myapp-readonly exists"
+
+grading_rules:
+  - check: "curl -sf http://localhost:8200/v1/sys/health | grep -q sealed.*false"
+    points: 15
+  - check: "curl -sf -H 'X-Vault-Token: dev-root-token' http://localhost:8200/v1/secret/data/lab/myapp | grep -q username"
+    points: 25
+  - check: "curl -sf -H 'X-Vault-Token: dev-root-token' http://localhost:8200/v1/sys/policies/acl/myapp-readonly | grep -q myapp-readonly"
+    points: 30
+  - check: "curl -sf -H 'X-Vault-Token: dev-root-token' http://localhost:8200/v1/secret/data/lab/myapp | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if 'api_key' in d.get('data',{}).get('data',{}) else 1)\""
+    points: 30
+
+cleanup_steps:
+  - "vault kv delete secret/lab/myapp 2>/dev/null || true"
+  - "vault policy delete myapp-readonly 2>/dev/null || true"
+
+related_docs:
+  - "../../../14-security/README.md"
+
+related_cloud_services:
+  - "AWS Secrets Manager"
+  - "AWS Parameter Store"
+  - "Azure Key Vault"
+  - "GCP Secret Manager"
+
+local_only: true
+cost_warning: null
+safety_warning: "Vault runs in dev mode — all data is in-memory and lost on restart. Do NOT use dev mode in production."

@@ -1,0 +1,228 @@
+# docker-compose.observability.yml — Observability stack
+# Prometheus, Grafana, Loki, Promtail, Jaeger, OpenTelemetry Collector
+# ~1.5 GB RAM
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.observability.yml \
+#     --profile core --profile observability up -d
+
+name: local-cloud-lab
+
+networks:
+  cloud-lab-network:
+    external: true
+
+volumes:
+  prometheus-data:
+    name: cloud-lab-prometheus-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+  grafana-data:
+    name: cloud-lab-grafana-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+  loki-data:
+    name: cloud-lab-loki-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+
+services:
+
+  # ─────────────────────────────────────────────
+  # Prometheus — Metrics collection
+  # http://localhost:9090
+  # ─────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.49.0
+    container_name: cloud-lab-prometheus
+    profiles: [observability]
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+      - "--log.level=info"
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./configs/prometheus/rules/:/etc/prometheus/rules/:ro
+      - prometheus-data:/prometheus
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: prometheus
+      traefik.enable: "true"
+      traefik.http.routers.prometheus.rule: "Host(`prometheus.localhost`)"
+      traefik.http.services.prometheus.loadbalancer.server.port: "9090"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Grafana — Metrics + logs dashboards
+  # http://localhost:3000
+  # Default login: admin / adminpassword123
+  # ─────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: cloud-lab-grafana
+    profiles: [observability]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-adminpassword123}
+      GF_FEATURE_TOGGLES_ENABLE: "traceqlEditor"
+      GF_INSTALL_PLUGINS: "grafana-piechart-panel"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./configs/grafana/provisioning/:/etc/grafana/provisioning/:ro
+      - ./configs/grafana/dashboards/:/var/lib/grafana/dashboards/:ro
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: grafana
+      traefik.enable: "true"
+      traefik.http.routers.grafana.rule: "Host(`grafana.localhost`)"
+      traefik.http.services.grafana.loadbalancer.server.port: "3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Loki — Log aggregation
+  # ─────────────────────────────────────────────
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: cloud-lab-loki
+    profiles: [observability]
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ./configs/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: loki
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Promtail — Log shipper (Docker container logs → Loki)
+  # ─────────────────────────────────────────────
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: cloud-lab-promtail
+    profiles: [observability]
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./configs/promtail/config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: promtail
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Jaeger — Distributed tracing
+  # UI: http://localhost:16686
+  # ─────────────────────────────────────────────
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: cloud-lab-jaeger
+    profiles: [observability]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+      COLLECTOR_ZIPKIN_HOST_PORT: "9411"
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+      - "${JAEGER_COLLECTOR_PORT:-14268}:14268"
+      - "${JAEGER_GRPC_PORT:-14250}:14250"
+      - "9411:9411"
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: jaeger
+      traefik.enable: "true"
+      traefik.http.routers.jaeger.rule: "Host(`jaeger.localhost`)"
+      traefik.http.services.jaeger.loadbalancer.server.port: "16686"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:14269/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # OpenTelemetry Collector
+  # OTLP gRPC: localhost:4317
+  # OTLP HTTP: localhost:4318
+  # ─────────────────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    container_name: cloud-lab-otel-collector
+    profiles: [observability]
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./configs/otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "${OTEL_GRPC_PORT:-4317}:4317"
+      - "${OTEL_HTTP_PORT:-4318}:4318"
+      - "8888:8888"
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: otel-collector
+    depends_on:
+      - jaeger
+      - prometheus
+      - loki
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Node Exporter — Host metrics for Prometheus
+  # ─────────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: cloud-lab-node-exporter
+    profiles: [observability]
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: node-exporter
+    restart: unless-stopped

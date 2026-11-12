@@ -1,0 +1,14 @@
+---
+# Homepage dashboard configuration
+# See: https://gethomepage.dev/configs/settings/
+
+title: Cloud-Learnings Lab
+description: Local Docker-based cloud practice platform
+startUrl: http://localhost:3000
+background: "#1a1a2e"
+theme: dark
+color: slate
+target: _blank
+
+disableCollapse: false
+hideVersion: false

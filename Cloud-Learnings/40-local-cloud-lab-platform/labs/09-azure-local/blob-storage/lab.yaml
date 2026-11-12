@@ -1,0 +1,114 @@
+id: azurite-blob-storage
+title: "Azure Local: Blob Storage with Azurite"
+description: >
+  Practice Azure Blob Storage operations using Azurite — the official Azure Storage
+  emulator. Learn container (bucket) management, blob upload/download, SAS tokens,
+  metadata, and storage tiers using the Azure CLI or az storage commands.
+  Azurite is already running as part of the azure-local profile.
+
+difficulty: beginner
+estimated_time: "45 minutes"
+category: azure-local
+
+prerequisites:
+  - "Azure local services running: make start-azure-local"
+  - "Azure CLI installed: az --version  OR  use azurite directly"
+
+tools_required:
+  - az
+  - curl
+
+docker_profiles:
+  - azure-local
+
+ports_used:
+  - 10000
+
+learning_objectives:
+  - Create Azure Blob Storage containers (equivalent to S3 buckets)
+  - Upload and download blobs using az storage blob commands
+  - Set blob metadata and content type
+  - Generate SAS tokens for temporary access
+  - Understand Blob storage tiers (Hot, Cool, Archive)
+  - Use Azure Storage connection strings
+
+tasks:
+  - id: verify-azurite
+    description: "Verify Azurite is running and accessible on port 10000"
+    hints:
+      - "curl -sf http://localhost:10000/ or curl -sf http://localhost:10000/devstoreaccount1"
+      - "Azurite returns HTTP 400 on GET / — this is expected and confirms it's running"
+      - "The default connection string: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1"
+
+  - id: configure-az-cli
+    description: "Configure az CLI to talk to Azurite using the connection string"
+    hints:
+      - "Export connection string: export AZURE_STORAGE_CONNECTION_STRING='DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1'"
+      - "Test: az storage container list"
+      - "Or use --connection-string flag on every command"
+
+  - id: create-container
+    description: "Create a blob container named 'lab-blobs'"
+    hints:
+      - "az storage container create --name lab-blobs"
+      - "List containers: az storage container list --output table"
+      - "In Azure: containers are like S3 buckets but within a storage account"
+
+  - id: upload-blobs
+    description: "Upload 3 files to the lab-blobs container in different 'directories' (prefixes)"
+    hints:
+      - "Create files: echo 'document content' > doc.txt && echo 'image data' > img.txt && echo 'log entry' > app.log"
+      - "Upload: az storage blob upload --container-name lab-blobs --file doc.txt --name docs/doc.txt"
+      - "Upload: az storage blob upload --container-name lab-blobs --file app.log --name logs/app.log"
+      - "List: az storage blob list --container-name lab-blobs --output table"
+
+  - id: download-blob
+    description: "Download a blob and verify its contents"
+    hints:
+      - "az storage blob download --container-name lab-blobs --name docs/doc.txt --file /tmp/downloaded.txt"
+      - "cat /tmp/downloaded.txt"
+      - "Compare: diff doc.txt /tmp/downloaded.txt && echo 'Files match'"
+
+  - id: blob-metadata
+    description: "Set custom metadata on a blob and retrieve it"
+    hints:
+      - "az storage blob metadata update --container-name lab-blobs --name docs/doc.txt --metadata author=labuser environment=dev"
+      - "Get metadata: az storage blob show --container-name lab-blobs --name docs/doc.txt --query metadata"
+
+  - id: sas-token
+    description: "Generate a SAS token for the docs/doc.txt blob, valid for 10 minutes"
+    hints:
+      - "az storage blob generate-sas --container-name lab-blobs --name docs/doc.txt --permissions r --expiry $(date -u -d '+10 minutes' '+%Y-%m-%dT%H:%MZ') 2>/dev/null || az storage blob generate-sas --container-name lab-blobs --name docs/doc.txt --permissions r --expiry $(date -u -v+10M '+%Y-%m-%dT%H:%MZ')"
+      - "Note: SAS token generation works slightly differently on macOS vs Linux for date formatting"
+      - "Azurite supports SAS for local testing"
+
+validation_steps:
+  - "Azurite is reachable on http://localhost:10000"
+  - "lab-blobs container exists"
+  - "At least 3 blobs uploaded"
+
+grading_rules:
+  - check: "curl -sf http://localhost:10000/devstoreaccount1?comp=list 2>/dev/null | grep -qi 'Container\\|EnumerationResults'"
+    points: 20
+  - check: "AZURE_STORAGE_CONNECTION_STRING='DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1' az storage container list 2>/dev/null | grep -q lab-blobs"
+    points: 30
+  - check: "AZURE_STORAGE_CONNECTION_STRING='DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1' az storage blob list --container-name lab-blobs 2>/dev/null | python3 -c 'import sys,json; d=json.load(sys.stdin); exit(0 if len(d) >= 3 else 1)'"
+    points: 30
+  - check: "AZURE_STORAGE_CONNECTION_STRING='DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1' az storage container exists --name lab-blobs 2>/dev/null | python3 -c 'import sys,json; d=json.load(sys.stdin); exit(0 if d.get(\"exists\") else 1)'"
+    points: 20
+
+cleanup_steps:
+  - "AZURE_STORAGE_CONNECTION_STRING='DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1' az storage container delete --name lab-blobs 2>/dev/null || true"
+
+related_docs:
+  - "../../../06-azure/05-storage/README.md"
+
+related_cloud_services:
+  - "Azure Blob Storage"
+  - "Azure Data Lake Storage Gen2"
+  - "AWS S3"
+  - "GCP Cloud Storage"
+
+local_only: true
+cost_warning: null
+safety_warning: null

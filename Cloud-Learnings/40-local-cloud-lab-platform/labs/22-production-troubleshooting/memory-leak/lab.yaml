@@ -1,0 +1,141 @@
+id: troubleshoot-memory-leak
+title: "Production Troubleshooting: Memory Leak Detection"
+description: >
+  A service is slowly consuming memory over time and eventually OOM-crashes.
+  Diagnose a simulated memory leak: observe growing memory usage with docker stats
+  and Prometheus, capture a heap dump, identify the leaking objects, and apply
+  a fix. Covers the complete memory leak investigation workflow used in production.
+
+difficulty: advanced
+estimated_time: "60 minutes"
+category: production-troubleshooting
+
+prerequisites:
+  - "Docker running"
+  - "Observability stack running: make start-observability"
+  - "Python 3 and tracemalloc (built-in)"
+
+tools_required:
+  - docker
+  - python3
+  - curl
+
+docker_profiles:
+  - observability
+
+ports_used:
+  - 9998
+
+learning_objectives:
+  - Detect memory leaks using docker stats and Prometheus metrics
+  - Use Python's tracemalloc to trace memory allocations
+  - Analyze heap growth with memory_profiler and objgraph
+  - Identify the leaking object type and call site
+  - Apply fixes: clear caches, fix reference cycles, set size limits
+  - Set up OOM kill alerts in Prometheus
+  - Understand resident vs. virtual memory, heap vs. stack
+
+tasks:
+  - id: start-leaky-service
+    description: "Start a Python HTTP server that has a deliberate memory leak"
+    hints:
+      - "Create leak_server.py:"
+      - "  import http.server, threading"
+      - "  CACHE = []  # global unbounded cache — the leak"
+      - "  class LeakyHandler(http.server.BaseHTTPRequestHandler):"
+      - "      def do_GET(self):"
+      - "          CACHE.append('x' * 1024 * 100)  # add 100KB per request"
+      - "          self.send_response(200); self.end_headers(); self.wfile.write(b'ok')"
+      - "  http.server.HTTPServer(('0.0.0.0', 9998), LeakyHandler).serve_forever()"
+      - "docker run -d --name leaky-app -p 9998:9998 -v ~/leak_server.py:/app/server.py python:3.11-alpine python3 /app/server.py"
+
+  - id: observe-growth
+    description: "Send repeated requests and watch memory grow with docker stats"
+    hints:
+      - "Send 20 requests: for i in $(seq 20); do curl -s http://localhost:9998 >/dev/null; done"
+      - "Watch stats: docker stats leaky-app --no-stream"
+      - "Repeat 3 times and observe memory increasing each time"
+      - "This is the 'staircase' memory growth pattern of a leak"
+
+  - id: prometheus-memory-metric
+    description: "Query Prometheus for the container's memory usage over time"
+    hints:
+      - "PromQL: container_memory_usage_bytes{name='leaky-app'}"
+      - "Or: container_memory_rss{name='leaky-app'}"
+      - "Plot as a time series in Grafana — you should see steady growth"
+      - "Rate of growth: rate(container_memory_usage_bytes{name='leaky-app'}[5m])"
+
+  - id: diagnose-with-tracemalloc
+    description: "Add tracemalloc to the server to capture the top memory allocations"
+    hints:
+      - "Add at the top of server.py: import tracemalloc; tracemalloc.start()"
+      - "Add a /debug endpoint that returns top allocations:"
+      - "    snapshot = tracemalloc.take_snapshot()"
+      - "    top = snapshot.statistics('lineno')[:10]"
+      - "    result = '\\n'.join(str(s) for s in top)"
+      - "curl http://localhost:9998/debug"
+      - "Should show: leak_server.py:line X: 2000.0 KiB (size=100)"
+
+  - id: identify-root-cause
+    description: "Identify the root cause: the unbounded CACHE list and fix it"
+    hints:
+      - "Root cause: CACHE.append() called on every request with no eviction"
+      - "Fix options:"
+      - "  1. Use collections.deque(maxlen=100) instead of list"
+      - "  2. Use functools.lru_cache with maxsize"
+      - "  3. Clear cache periodically: if len(CACHE) > 100: CACHE.clear()"
+      - "  4. Use a proper caching library: cachetools, Redis"
+
+  - id: apply-fix-and-verify
+    description: "Apply the fix, restart the service, and verify memory stays stable"
+    hints:
+      - "Fix the CACHE line: from collections import deque; CACHE = deque(maxlen=100)"
+      - "Restart: docker stop leaky-app && docker rm leaky-app"
+      - "Start with fixed code"
+      - "Send 50 requests and watch docker stats — memory should plateau"
+
+  - id: oom-alert
+    description: "Write a Prometheus alert rule that fires when container memory > 200MB"
+    hints:
+      - "Alert rule in configs/prometheus/rules/lab-alerts.yml:"
+      - "  - alert: ContainerHighMemory"
+      - "    expr: container_memory_usage_bytes{name='leaky-app'} > 200 * 1024 * 1024"
+      - "    for: 1m"
+      - "    labels: {severity: warning}"
+      - "    annotations: {summary: 'Container using > 200MB'}"
+      - "Reload Prometheus: curl -X POST http://localhost:9090/-/reload"
+
+validation_steps:
+  - "leaky-app container is running on port 9998"
+  - "Memory leak is observable via docker stats"
+  - "tracemalloc or similar identifies the leak site"
+
+grading_rules:
+  - check: "docker ps --format '{{.Names}}' 2>/dev/null | grep -q leaky-app"
+    points: 15
+  - check: "curl -sf http://localhost:9998 2>/dev/null | grep -qi 'ok\\|hello\\|memory'"
+    points: 20
+  - check: "docker stats leaky-app --no-stream --format '{{.MemUsage}}' 2>/dev/null | grep -qE '[0-9]+'"
+    points: 20
+  - check: "docker exec leaky-app ps aux 2>/dev/null | grep -qi python"
+    points: 20
+  - check: "[ -f ~/leak_server.py ] && grep -q 'CACHE\\|cache\\|leak' ~/leak_server.py && echo pass"
+    points: 25
+
+cleanup_steps:
+  - "docker stop leaky-app 2>/dev/null || true"
+  - "docker rm leaky-app 2>/dev/null || true"
+  - "rm -f ~/leak_server.py || true"
+
+related_docs:
+  - "../../../25-troubleshooting/README.md"
+
+related_cloud_services:
+  - "AWS CloudWatch Container Insights"
+  - "GCP Cloud Profiler"
+  - "Datadog Memory Profiling"
+  - "Dynatrace Memory Analysis"
+
+local_only: true
+cost_warning: null
+safety_warning: null

@@ -1,0 +1,88 @@
+id: platform-orientation
+title: "Platform Orientation: Get to Know the Lab Environment"
+description: >
+  In this orientation lab, you will explore the local cloud lab platform itself.
+  You will learn how to start services, run the lab runner, check the dashboard,
+  and understand the Docker Compose profile system. No cloud account required.
+
+difficulty: beginner
+estimated_time: "15 minutes"
+category: foundations
+
+prerequisites: []
+tools_required:
+  - docker
+  - make
+
+docker_profiles:
+  - core
+
+ports_used:
+  - 3001
+  - 4567
+  - 9000
+
+learning_objectives:
+  - Understand the Docker Compose profile system
+  - Navigate the lab dashboard
+  - Use basic make commands
+  - Check service health with make health
+
+tasks:
+  - id: check-dashboard
+    description: "Open the lab dashboard at http://localhost:3001 and confirm it loads"
+    hints:
+      - "Make sure you've run: make start-core"
+      - "If the page doesn't load, run: make health"
+
+  - id: check-api
+    description: "Verify the Lab API is running by visiting http://localhost:4567/health"
+    hints:
+      - "The API returns JSON: {\"status\": \"ok\", ...}"
+      - "You can also run: curl http://localhost:4567/health"
+
+  - id: list-labs
+    description: "Run 'make list-labs' from the platform directory and note how many labs are available"
+    hints:
+      - "cd into 40-local-cloud-lab-platform/ first"
+      - "The output shows lab IDs, difficulty, and titles"
+
+  - id: check-minio
+    description: "Open MinIO console at http://localhost:9001 and log in (labadmin/labpassword123)"
+    hints:
+      - "MinIO is the S3-compatible object storage used by several labs"
+      - "Default credentials are in your .env file"
+
+  - id: run-doctor
+    description: "Run 'make doctor' and confirm all required tools are present"
+    hints:
+      - "Doctor checks Docker, Python, ports, and disk space"
+      - "Warnings for optional tools (kubectl, terraform) are OK at this stage"
+
+validation_steps:
+  - "make health returns [OK] for all core services"
+  - "http://localhost:3001 loads the dashboard"
+  - "http://localhost:4567/health returns status:ok"
+  - "make list-labs shows the lab catalog"
+
+grading_rules:
+  - check: "curl -sf http://localhost:4567/health | grep -q ok"
+    points: 25
+  - check: "curl -sf http://localhost:3001 | grep -qi cloud"
+    points: 25
+  - check: "curl -sf http://localhost:9001 | grep -qi minio"
+    points: 25
+  - check: "docker ps --filter label=com.cloudlabs.project=local-cloud-lab --filter status=running | grep -q api"
+    points: 25
+
+cleanup_steps: []
+
+related_docs:
+  - "../README.md"
+  - "../QUICKSTART.md"
+  - "../ARCHITECTURE.md"
+
+related_cloud_services: []
+local_only: true
+cost_warning: null
+safety_warning: null

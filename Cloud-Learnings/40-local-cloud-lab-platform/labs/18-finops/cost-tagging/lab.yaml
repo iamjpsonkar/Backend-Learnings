@@ -1,0 +1,121 @@
+id: finops-cost-tagging
+title: "FinOps: Resource Tagging Strategy and Cost Attribution"
+description: >
+  Learn how cloud cost attribution works through hands-on tagging. Apply and
+  enforce consistent resource tags across Docker containers and LocalStack AWS
+  resources. Implement a tagging policy, audit existing resources for compliance,
+  and generate a cost attribution report — the same process used in real
+  FinOps programs.
+
+difficulty: beginner
+estimated_time: "45 minutes"
+category: finops
+
+prerequisites:
+  - "Core services running: make start-core"
+  - "AWS local services: make start-aws-local (for LocalStack)"
+  - "aws CLI installed and configured: aws configure"
+
+tools_required:
+  - docker
+  - aws
+  - python3
+
+docker_profiles:
+  - core
+  - aws-local
+
+ports_used:
+  - 4566
+
+learning_objectives:
+  - Understand why resource tagging is critical for FinOps
+  - Design a mandatory tag taxonomy (environment, team, cost-center, project)
+  - Apply tags to Docker containers using labels
+  - Apply tags to LocalStack S3 buckets and resources
+  - Query resources by tag to understand cost ownership
+  - Generate a cost attribution report from tagged resources
+  - Identify untagged resources (compliance audit)
+
+tasks:
+  - id: define-tag-taxonomy
+    description: "Define your organization's mandatory tag taxonomy in a tags.yaml file"
+    hints:
+      - "Create tags.yaml with mandatory tags:"
+      - "  mandatory: [environment, team, cost-center, project]"
+      - "  environment values: [dev, staging, prod]"
+      - "  Examples: environment=dev, team=platform, cost-center=CC-1234, project=web-app"
+      - "This mirrors real cloud tag policies in AWS Organizations or Azure Policy"
+
+  - id: tag-docker-containers
+    description: "Run Docker containers with cost attribution labels"
+    hints:
+      - "docker run -d --name tagged-app -l environment=dev -l team=platform -l cost-center=CC-1234 -l project=lab-platform nginx:alpine"
+      - "docker run -d --name tagged-db -l environment=dev -l team=data -l cost-center=CC-5678 -l project=lab-platform redis:7-alpine"
+      - "Filter by tag: docker ps --filter 'label=team=platform'"
+      - "Get all labels: docker inspect tagged-app | python3 -c \"import sys,json; c=json.load(sys.stdin); print(json.dumps(c[0]['Config']['Labels'],indent=2))\""
+
+  - id: tag-aws-resources
+    description: "Create and tag LocalStack S3 buckets with cost attribution tags"
+    hints:
+      - "export AWS_DEFAULT_REGION=us-east-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test"
+      - "aws --endpoint-url http://localhost:4566 s3 mb s3://prod-web-assets"
+      - "aws --endpoint-url http://localhost:4566 s3api put-bucket-tagging --bucket prod-web-assets --tagging 'TagSet=[{Key=environment,Value=prod},{Key=team,Value=web},{Key=cost-center,Value=CC-1234},{Key=project,Value=lab}]'"
+      - "Verify: aws --endpoint-url http://localhost:4566 s3api get-bucket-tagging --bucket prod-web-assets"
+
+  - id: audit-untagged
+    description: "Write a script to find Docker containers missing any mandatory tags"
+    hints:
+      - "MANDATORY_TAGS=(environment team cost-center project)"
+      - "For each container, check if all mandatory labels are present"
+      - "docker ps -q | xargs -I{} docker inspect {} | python3 -c ..."
+      - "Output a compliance report showing compliant vs. non-compliant resources"
+
+  - id: cost-report
+    description: "Generate a cost attribution report grouping containers by team and cost-center"
+    hints:
+      - "Script that lists: team -> list of resources -> estimated monthly cost"
+      - "For Docker: use CPU/memory limits as a proxy for cost (vCPU hours + GB-hours)"
+      - "For S3: list objects and calculate storage size per tag group"
+      - "Real cloud: AWS Cost Explorer groups by tag, Azure Cost Management by tag, GCP by label"
+
+  - id: tag-enforcement
+    description: "Write a pre-flight check script that refuses to deploy if required tags are missing"
+    hints:
+      - "Create deploy-check.sh that validates TAGS env vars before running docker run"
+      - "Required: ENVIRONMENT, TEAM, COST_CENTER, PROJECT must be set"
+      - "If any missing: echo 'ERROR: Missing required tag' && exit 1"
+      - "This pattern is used in IaC pipelines (Terraform, CloudFormation) for tag enforcement"
+
+validation_steps:
+  - "Docker containers tagged-app and tagged-db exist with correct labels"
+  - "LocalStack S3 bucket prod-web-assets exists with tags"
+  - "Compliance audit script identifies untagged resources"
+
+grading_rules:
+  - check: "docker ps --filter 'label=environment=dev' --format '{{.Names}}' 2>/dev/null | grep -q tagged-app"
+    points: 20
+  - check: "docker inspect tagged-app 2>/dev/null | python3 -c \"import sys,json; c=json.load(sys.stdin); labels=c[0]['Config']['Labels']; exit(0 if all(k in labels for k in ['environment','team','cost-center','project']) else 1)\" 2>/dev/null && echo pass"
+    points: 30
+  - check: "AWS_DEFAULT_REGION=us-east-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test aws --endpoint-url http://localhost:4566 s3api get-bucket-tagging --bucket prod-web-assets 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); tags={t['Key']:t['Value'] for t in d.get('TagSet',[])}; exit(0 if 'environment' in tags else 1)\" && echo pass"
+    points: 30
+  - check: "docker ps --filter 'label=team' --format '{{.Names}}' 2>/dev/null | wc -l | grep -qE '^[1-9]'"
+    points: 20
+
+cleanup_steps:
+  - "docker stop tagged-app tagged-db 2>/dev/null || true"
+  - "docker rm tagged-app tagged-db 2>/dev/null || true"
+  - "AWS_DEFAULT_REGION=us-east-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test aws --endpoint-url http://localhost:4566 s3 rb s3://prod-web-assets --force 2>/dev/null || true"
+
+related_docs:
+  - "../../../22-finops/README.md"
+
+related_cloud_services:
+  - "AWS Cost Explorer (tag-based)"
+  - "AWS Resource Groups Tag Editor"
+  - "Azure Cost Management + Billing"
+  - "GCP Billing Labels"
+
+local_only: true
+cost_warning: null
+safety_warning: null

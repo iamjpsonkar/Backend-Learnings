@@ -1,0 +1,60 @@
+# Intentionally broken deployment for CrashLoopBackOff lab
+# The DATABASE_URL env var has an invalid value — the app will crash on startup
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-debug
+  labels:
+    com.cloudlabs.project: local-cloud-lab
+    lab: k8s-crashloopbackoff
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: broken-app
+  namespace: lab-debug
+  labels:
+    app: broken-app
+    com.cloudlabs.project: local-cloud-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: broken-app
+  template:
+    metadata:
+      labels:
+        app: broken-app
+    spec:
+      containers:
+        - name: app
+          image: alpine:3.19
+          # This command will fail because DATABASE_URL is invalid
+          command:
+            - sh
+            - -c
+            - |
+              echo "Starting application..."
+              echo "DATABASE_URL: $DATABASE_URL"
+              if [[ "$DATABASE_URL" != postgres://* ]]; then
+                echo "ERROR: DATABASE_URL must start with postgres://"
+                echo "Current value: $DATABASE_URL"
+                exit 1
+              fi
+              echo "Connected to database successfully"
+              # Keep running
+              while true; do echo "App running..."; sleep 30; done
+          env:
+            - name: DATABASE_URL
+              # BUG: wrong scheme — should be postgres:// not db://
+              value: "db://wrong-value-here"
+            - name: APP_ENV
+              value: "lab"
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "50m"

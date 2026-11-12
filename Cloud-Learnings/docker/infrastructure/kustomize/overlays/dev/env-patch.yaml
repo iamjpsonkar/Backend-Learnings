@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sample-api-config
+data:
+  LOG_LEVEL: "DEBUG"
+  OTEL_ENABLED: "true"

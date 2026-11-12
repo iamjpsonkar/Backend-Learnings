@@ -1,0 +1,138 @@
+id: multi-cloud-abstraction
+title: "Multi-Cloud: Storage Abstraction Layer"
+description: >
+  Build a storage abstraction layer in Python that works identically across
+  S3 (LocalStack), Azure Blob (Azurite), and GCS (fake-gcs-server). Learn
+  why abstraction matters, how to design cloud-agnostic interfaces, and what
+  the real trade-offs are. This pattern is used in enterprise multi-cloud
+  architectures.
+
+difficulty: intermediate
+estimated_time: "60 minutes"
+category: multi-cloud
+
+prerequisites:
+  - "AWS local services: make start-aws-local"
+  - "Azure local services: make start-azure-local"
+  - "GCS emulator started manually (from 10-gcp-local/gcs-emulator lab)"
+  - "Python 3 with boto3, azure-storage-blob installed"
+
+tools_required:
+  - python3
+  - curl
+
+docker_profiles:
+  - aws-local
+  - azure-local
+
+ports_used:
+  - 4566
+  - 10000
+  - 4443
+
+learning_objectives:
+  - Design a provider-agnostic storage interface
+  - Implement the same interface for S3, Azure Blob, and GCS
+  - Understand capability differences across providers
+  - Use environment-based provider selection
+  - Write integration tests that run against all three backends
+  - Understand abstraction costs (lowest common denominator problem)
+
+tasks:
+  - id: design-interface
+    description: "Design a Python abstract base class for cloud storage operations"
+    hints:
+      - "from abc import ABC, abstractmethod"
+      - "class CloudStorage(ABC):"
+      - "    @abstractmethod def create_bucket(self, name: str) -> None: ..."
+      - "    @abstractmethod def upload(self, bucket: str, key: str, data: bytes, content_type: str = 'application/octet-stream') -> None: ..."
+      - "    @abstractmethod def download(self, bucket: str, key: str) -> bytes: ..."
+      - "    @abstractmethod def list_objects(self, bucket: str, prefix: str = '') -> list[str]: ..."
+      - "    @abstractmethod def delete(self, bucket: str, key: str) -> None: ..."
+
+  - id: implement-s3
+    description: "Implement the CloudStorage interface for S3 using boto3 against LocalStack"
+    hints:
+      - "import boto3"
+      - "class S3Storage(CloudStorage):"
+      - "    def __init__(self): self.client = boto3.client('s3', endpoint_url='http://localhost:4566', aws_access_key_id='test', aws_secret_access_key='test', region_name='us-east-1')"
+      - "    def create_bucket(self, name): self.client.create_bucket(Bucket=name)"
+      - "    def upload(self, bucket, key, data, content_type='application/octet-stream'): self.client.put_object(Bucket=bucket, Key=key, Body=data, ContentType=content_type)"
+      - "    def download(self, bucket, key): return self.client.get_object(Bucket=bucket, Key=key)['Body'].read()"
+
+  - id: implement-azure
+    description: "Implement the CloudStorage interface for Azure Blob using Azurite"
+    hints:
+      - "from azure.storage.blob import BlobServiceClient"
+      - "AZURITE_CONN = 'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1'"
+      - "class AzureBlobStorage(CloudStorage):"
+      - "    def __init__(self): self.client = BlobServiceClient.from_connection_string(AZURITE_CONN)"
+      - "    def create_bucket(self, name): self.client.create_container(name)"
+      - "    def upload(self, bucket, key, data, content_type='application/octet-stream'): self.client.get_blob_client(bucket, key).upload_blob(data, overwrite=True, content_settings={'content_type': content_type})"
+
+  - id: implement-gcs
+    description: "Implement the CloudStorage interface for GCS using the fake-gcs-server REST API"
+    hints:
+      - "Use urllib.request — no SDK needed for the emulator"
+      - "class GCSStorage(CloudStorage):"
+      - "    BASE = 'http://localhost:4443'"
+      - "    def create_bucket(self, name): urllib.request.urlopen(urllib.request.Request(f'{self.BASE}/storage/v1/b?project=test', data=json.dumps({'name':name}).encode(), method='POST', headers={'Content-Type':'application/json'}))"
+      - "    def upload(self, bucket, key, data, content_type='application/octet-stream'): urllib.request.urlopen(urllib.request.Request(f'{self.BASE}/upload/storage/v1/b/{bucket}/o?uploadType=media&name={key}', data=data, method='POST', headers={'Content-Type':content_type}))"
+
+  - id: provider-factory
+    description: "Write a factory function that returns the correct storage implementation based on environment"
+    hints:
+      - "import os"
+      - "def get_storage(provider: str = None) -> CloudStorage:"
+      - "    provider = provider or os.environ.get('CLOUD_PROVIDER', 's3')"
+      - "    if provider == 's3': return S3Storage()"
+      - "    elif provider == 'azure': return AzureBlobStorage()"
+      - "    elif provider == 'gcs': return GCSStorage()"
+      - "    raise ValueError(f'Unknown provider: {provider}')"
+
+  - id: integration-tests
+    description: "Write pytest tests that run the same CRUD operations against all 3 providers"
+    hints:
+      - "import pytest"
+      - "@pytest.fixture(params=['s3','azure','gcs'])"
+      - "def storage(request): return get_storage(request.param)"
+      - "def test_upload_download(storage):"
+      - "    bucket = 'test-bucket-' + storage.__class__.__name__.lower()"
+      - "    storage.create_bucket(bucket)"
+      - "    storage.upload(bucket, 'test.txt', b'hello world')"
+      - "    assert storage.download(bucket, 'test.txt') == b'hello world'"
+
+validation_steps:
+  - "LocalStack S3 is accessible on port 4566"
+  - "Azurite is accessible on port 10000"
+  - "Storage abstraction Python file exists"
+  - "All 3 providers pass the same tests"
+
+grading_rules:
+  - check: "curl -sf http://localhost:4566 &>/dev/null && echo pass"
+    points: 15
+  - check: "curl -sf http://localhost:10000 &>/dev/null || curl -s http://localhost:10000 | head -1 | grep -q HTTP && echo pass"
+    points: 15
+  - check: "python3 -c 'import boto3; print(\"ok\")' 2>/dev/null | grep -q ok"
+    points: 15
+  - check: "python3 -c 'from azure.storage.blob import BlobServiceClient; print(\"ok\")' 2>/dev/null | grep -q ok"
+    points: 15
+  - check: "[ -f ~/multi-cloud-lab/storage.py ] && grep -q 'class.*Storage' ~/multi-cloud-lab/storage.py && echo pass"
+    points: 20
+  - check: "[ -f ~/multi-cloud-lab/test_storage.py ] && grep -q 'def test_' ~/multi-cloud-lab/test_storage.py && echo pass"
+    points: 20
+
+cleanup_steps:
+  - "rm -rf ~/multi-cloud-lab || true"
+
+related_docs:
+  - "../../../20-multi-cloud/README.md"
+
+related_cloud_services:
+  - "AWS S3"
+  - "Azure Blob Storage"
+  - "GCP Cloud Storage"
+
+local_only: true
+cost_warning: null
+safety_warning: null

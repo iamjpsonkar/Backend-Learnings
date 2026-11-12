@@ -1,0 +1,154 @@
+version: "1"
+labs:
+  - id: aws-localstack
+    name: "AWS with LocalStack"
+    description: "Practice AWS services (S3, SQS, SNS, DynamoDB, Lambda) using LocalStack"
+    profile: aws
+    difficulty: beginner
+    estimated_time: "60 min"
+    topics: [s3, sqs, sns, dynamodb, lambda, aws-cli, terraform]
+
+  - id: azure-azurite
+    name: "Azure with Azurite"
+    description: "Practice Azure Blob, Queue, and Table storage using Azurite"
+    profile: azure
+    difficulty: beginner
+    estimated_time: "45 min"
+    topics: [blob-storage, queue-storage, table-storage, azure-cli]
+
+  - id: gcp-emulators
+    name: "GCP Emulators"
+    description: "Practice GCP Pub/Sub and Firestore using local emulators"
+    profile: gcp
+    difficulty: beginner
+    estimated_time: "45 min"
+    topics: [pubsub, firestore, gcloud-cli]
+
+  - id: minio-object-storage
+    name: "MinIO Object Storage"
+    description: "S3-compatible object storage with MinIO"
+    profile: aws
+    difficulty: beginner
+    estimated_time: "30 min"
+    topics: [object-storage, s3, minio, mc-cli]
+
+  - id: docker-networking
+    name: "Docker Networking"
+    description: "Docker networks, DNS, reverse proxy, and Traefik routing"
+    profile: core
+    difficulty: beginner
+    estimated_time: "60 min"
+    topics: [docker-networks, dns, traefik, nginx, tls]
+
+  - id: linux-debugging
+    name: "Linux Debugging"
+    description: "Container debugging, log analysis, process investigation"
+    profile: core
+    difficulty: beginner
+    estimated_time: "45 min"
+    topics: [ps, netstat, curl, logs, lsof]
+
+  - id: kubernetes-local
+    name: "Local Kubernetes"
+    description: "Kubernetes with kind or k3d — pods, deployments, services, ingress"
+    profile: null
+    requires_host: [kind, k3d, kubectl, helm]
+    difficulty: intermediate
+    estimated_time: "120 min"
+    topics: [pods, deployments, services, ingress, configmaps, secrets, helm, kustomize]
+
+  - id: terraform-opentofu
+    name: "Terraform and OpenTofu"
+    description: "IaC with Terraform and OpenTofu against LocalStack"
+    profile: aws
+    difficulty: intermediate
+    estimated_time: "90 min"
+    topics: [terraform, opentofu, state, modules, localstack-provider]
+
+  - id: ansible
+    name: "Ansible"
+    description: "Configuration management with Ansible playbooks"
+    profile: iac
+    difficulty: intermediate
+    estimated_time: "60 min"
+    topics: [inventory, playbooks, templates, idempotency, vault]
+
+  - id: observability
+    name: "Observability Stack"
+    description: "Prometheus, Grafana, Loki, Tempo — metrics, logs, traces"
+    profile: observability
+    difficulty: intermediate
+    estimated_time: "90 min"
+    topics: [prometheus, grafana, loki, tempo, promql, logql, otel]
+
+  - id: security
+    name: "Security Toolkit"
+    description: "Vault secrets, Keycloak OIDC, Trivy scans, Checkov IaC scanning"
+    profile: security
+    difficulty: intermediate
+    estimated_time: "90 min"
+    topics: [vault, keycloak, trivy, checkov, hadolint, secrets-management]
+
+  - id: cicd
+    name: "CI/CD Pipeline"
+    description: "Gitea + Jenkins + local registry pipeline"
+    profile: cicd
+    difficulty: intermediate
+    estimated_time: "120 min"
+    topics: [gitea, jenkins, docker-build, pipeline, registry]
+
+  - id: databases
+    name: "Databases"
+    description: "PostgreSQL, MySQL, MongoDB, Redis — CRUD, backup, restore"
+    profile: data
+    difficulty: beginner
+    estimated_time: "90 min"
+    topics: [postgresql, mysql, mongodb, redis, backup, restore, migration]
+
+  - id: messaging
+    name: "Messaging"
+    description: "RabbitMQ and Redpanda — producers, consumers, dead-letters"
+    profile: messaging
+    difficulty: intermediate
+    estimated_time: "60 min"
+    topics: [rabbitmq, kafka, redpanda, producer, consumer, dlq]
+
+  - id: serverless-events
+    name: "Serverless and Events"
+    description: "Lambda + EventBridge simulation via LocalStack"
+    profile: aws
+    difficulty: intermediate
+    estimated_time: "60 min"
+    topics: [lambda, eventbridge, sqs-trigger, sns-fanout, localstack]
+
+  - id: finops-simulation
+    name: "FinOps Simulation"
+    description: "Cloud cost analysis, tagging, idle resource detection"
+    profile: data
+    difficulty: intermediate
+    estimated_time: "60 min"
+    topics: [cost-analysis, tagging, idle-resources, rightsizing, budgets]
+
+  - id: sre-incident-response
+    name: "SRE Incident Response"
+    description: "Service down, high latency, bad config, runbooks, postmortems"
+    profile: observability
+    difficulty: advanced
+    estimated_time: "120 min"
+    topics: [incident-response, runbooks, postmortem, metrics, alerts]
+
+  - id: broken-labs
+    name: "Broken Environments"
+    description: "Deliberately broken setups to diagnose and fix"
+    profile: varies
+    difficulty: advanced
+    estimated_time: "varies"
+    topics: [debugging, troubleshooting, root-cause-analysis]
+
+  - id: real-world-projects
+    name: "Real-World Projects"
+    description: "End-to-end projects: 3-tier app, CI/CD, multi-cloud simulation"
+    profile: varies
+    difficulty: advanced
+    estimated_time: "varies"
+    topics: [architecture, cicd, observability, security, multi-cloud]

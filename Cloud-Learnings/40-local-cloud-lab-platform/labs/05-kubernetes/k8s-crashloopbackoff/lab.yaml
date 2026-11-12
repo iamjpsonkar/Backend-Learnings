@@ -1,0 +1,107 @@
+id: k8s-crashloopbackoff
+title: "Debug: CrashLoopBackOff — Fix a Broken Pod"
+description: >
+  A pod is in CrashLoopBackOff. Your job is to diagnose why, fix the root cause,
+  and restore the application to a healthy running state. This lab simulates
+  a real production debugging scenario using real Kubernetes tools.
+
+difficulty: advanced
+estimated_time: "60 minutes"
+category: kubernetes
+
+prerequisites:
+  - "Kind cluster running: make k8s-create-cluster"
+  - "kubectl installed"
+  - "Completed: 05-kubernetes/deploy-first-app"
+
+tools_required:
+  - kubectl
+  - kind
+
+docker_profiles:
+  - kubernetes
+
+ports_used: []
+
+learning_objectives:
+  - Identify CrashLoopBackOff and distinguish it from other error states
+  - Use kubectl logs, kubectl describe, and kubectl events to diagnose
+  - Read container exit codes to understand failure types
+  - Fix the root cause (misconfigured env var, missing secret, wrong command)
+  - Use kubectl rollout to verify recovery
+
+tasks:
+  - id: deploy-broken-app
+    description: >
+      Apply the broken deployment manifest:
+      kubectl apply -f labs/05-kubernetes/k8s-crashloopbackoff/assets/broken-deployment.yaml
+    hints:
+      - "The deployment will apply successfully but the pod will crash"
+      - "Watch: kubectl get pods -n lab-debug -w"
+
+  - id: observe-crashloop
+    description: "Observe the CrashLoopBackOff state and identify the pod name"
+    hints:
+      - "Command: kubectl get pods -n lab-debug"
+      - "Look for STATUS=CrashLoopBackOff or Error"
+      - "Note the RESTARTS count — it increases each time"
+
+  - id: read-logs
+    description: "Read the logs from the crashing pod — what does it say?"
+    hints:
+      - "Command: kubectl logs <pod-name> -n lab-debug"
+      - "If it crashed, try: kubectl logs <pod-name> -n lab-debug --previous"
+      - "Look for error messages about missing env vars or misconfigurations"
+
+  - id: describe-pod
+    description: "Describe the pod and check Events section — what is the exit code?"
+    hints:
+      - "Command: kubectl describe pod <pod-name> -n lab-debug"
+      - "Scroll to the Events section at the bottom"
+      - "Exit code 1 = application error, 137 = OOM kill, 126 = permission denied"
+
+  - id: find-and-fix
+    description: "Find the root cause in the deployment spec and fix it"
+    hints:
+      - "The broken deployment has a deliberately wrong env var: DATABASE_URL is invalid"
+      - "Edit: kubectl edit deployment broken-app -n lab-debug"
+      - "Or: kubectl set env deployment/broken-app DATABASE_URL=postgres://labuser:labpassword123@postgres:5432/labdb -n lab-debug"
+      - "The app expects DATABASE_URL to start with 'postgres://'"
+
+  - id: verify-recovery
+    description: "Verify the pod is now Running and passes the health check"
+    hints:
+      - "Command: kubectl get pods -n lab-debug -w"
+      - "Wait for STATUS=Running and READY=1/1"
+      - "Check: kubectl rollout status deployment/broken-app -n lab-debug"
+
+validation_steps:
+  - "kubectl get pods -n lab-debug shows STATUS=Running"
+  - "kubectl rollout status deployment/broken-app -n lab-debug exits 0"
+  - "kubectl logs shows application started successfully"
+
+grading_rules:
+  - check: "kubectl get deployment broken-app -n lab-debug"
+    points: 10
+  - check: "kubectl rollout status deployment/broken-app -n lab-debug --timeout=30s"
+    points: 40
+  - check: "kubectl get pods -n lab-debug --field-selector=status.phase=Running | grep -q broken-app"
+    points: 30
+  - check: "kubectl get pods -n lab-debug -o jsonpath='{.items[0].status.containerStatuses[0].restartCount}' | awk '{exit ($1 < 1) ? 1 : 0}'"
+    points: 20
+
+cleanup_steps:
+  - "kubectl delete namespace lab-debug --ignore-not-found=true"
+
+related_docs:
+  - "../../../10-kubernetes/README.md"
+  - "../../../23-troubleshooting/README.md"
+
+related_cloud_services:
+  - "AWS EKS (Elastic Kubernetes Service)"
+  - "Azure AKS (Azure Kubernetes Service)"
+  - "GCP GKE (Google Kubernetes Engine)"
+
+local_only: true
+cost_warning: null
+safety_warning: "This lab deletes and recreates pods. Do not run against a production cluster."

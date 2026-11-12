@@ -1,0 +1,208 @@
+# docker-compose.yml — Core services profile
+# Profiles: core (MinIO, Traefik, API, UI)
+#
+# Usage:
+#   docker compose --profile core up -d
+#   docker compose --profile core down
+#
+# All resources labelled com.cloudlabs.project=local-cloud-lab for safe cleanup
+
+name: local-cloud-lab
+
+networks:
+  cloud-lab-network:
+    name: cloud-lab-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+
+volumes:
+  minio-data:
+    name: cloud-lab-minio-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+  api-data:
+    name: cloud-lab-api-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+
+services:
+
+  # ─────────────────────────────────────────────
+  # Traefik — Reverse proxy and dashboard
+  # Dashboard: http://localhost:8080
+  # ─────────────────────────────────────────────
+  traefik:
+    image: traefik:v3.0
+    container_name: cloud-lab-traefik
+    profiles: [core]
+    command:
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=cloud-lab-network"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--ping=true"
+      - "--log.level=INFO"
+      - "--accesslog=true"
+    ports:
+      - "${TRAEFIK_DASHBOARD_PORT:-8080}:8080"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: traefik
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # MinIO — S3-Compatible Object Storage
+  # API:     http://localhost:9000
+  # Console: http://localhost:9001
+  # ─────────────────────────────────────────────
+  minio:
+    image: minio/minio:RELEASE.2024-01-01T00-00-00Z
+    container_name: cloud-lab-minio
+    profiles: [core]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-labadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-labpassword123}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      cloud-lab-network:
+        ipv4_address: 172.20.0.3
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: minio
+      traefik.enable: "true"
+      traefik.http.routers.minio-console.rule: "Host(`minio.localhost`)"
+      traefik.http.routers.minio-console.service: "minio-console"
+      traefik.http.services.minio-console.loadbalancer.server.port: "9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # MinIO bucket initialization (creates default bucket)
+  minio-init:
+    image: minio/mc:latest
+    container_name: cloud-lab-minio-init
+    profiles: [core]
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-labadmin} ${MINIO_ROOT_PASSWORD:-labpassword123} &&
+        mc mb --ignore-existing local/${MINIO_DEFAULT_BUCKET:-lab-bucket} &&
+        mc mb --ignore-existing local/terraform-state &&
+        mc mb --ignore-existing local/backups &&
+        echo 'MinIO initialized'
+      "
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+    restart: "no"
+
+  # ─────────────────────────────────────────────
+  # FastAPI Lab API
+  # http://localhost:4567
+  # ─────────────────────────────────────────────
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      labels:
+        com.cloudlabs.project: local-cloud-lab
+    image: cloud-lab-api:latest
+    container_name: cloud-lab-api
+    profiles: [core]
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LABS_DIR: /labs
+      DB_PATH: /app/data/lab_platform.db
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-labadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-labpassword123}
+    ports:
+      - "${LAB_API_PORT:-4567}:4567"
+    volumes:
+      - ./labs:/labs:ro
+      - api-data:/app/data
+    networks:
+      cloud-lab-network:
+        ipv4_address: 172.20.0.4
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: api
+      traefik.enable: "true"
+      traefik.http.routers.api.rule: "Host(`api.localhost`) || PathPrefix(`/api`)"
+      traefik.http.services.api.loadbalancer.server.port: "4567"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4567/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # React UI Dashboard
+  # http://localhost:3001
+  # ─────────────────────────────────────────────
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:${LAB_API_PORT:-4567}
+      labels:
+        com.cloudlabs.project: local-cloud-lab
+    image: cloud-lab-ui:latest
+    container_name: cloud-lab-ui
+    profiles: [core]
+    ports:
+      - "${LAB_UI_PORT:-3001}:80"
+    networks:
+      cloud-lab-network:
+        ipv4_address: 172.20.0.5
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: ui
+      traefik.enable: "true"
+      traefik.http.routers.ui.rule: "Host(`lab.localhost`)"
+      traefik.http.services.ui.loadbalancer.server.port: "80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped

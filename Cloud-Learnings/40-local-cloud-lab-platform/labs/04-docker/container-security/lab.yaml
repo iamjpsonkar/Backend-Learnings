@@ -1,0 +1,112 @@
+id: docker-container-security
+title: "Docker: Container Security Hardening"
+description: >
+  Learn to harden Docker containers against common vulnerabilities. Practice
+  running containers as non-root users, scanning images with Trivy, setting
+  read-only filesystems, dropping Linux capabilities, and applying resource limits.
+  These techniques are required for production-grade container deployments.
+
+difficulty: intermediate
+estimated_time: "60 minutes"
+category: docker
+
+prerequisites:
+  - "Docker installed and running"
+  - "Trivy installed: brew install aquasecurity/trivy/trivy"
+
+tools_required:
+  - docker
+  - trivy
+
+docker_profiles:
+  - core
+
+ports_used: []
+
+learning_objectives:
+  - Scan container images with Trivy for CVEs
+  - Run containers as non-root users
+  - Apply read-only root filesystem
+  - Drop unnecessary Linux capabilities
+  - Set resource limits (CPU, memory)
+  - Understand Docker's seccomp and AppArmor profiles
+  - Use USER instruction in Dockerfile
+
+tasks:
+  - id: scan-with-trivy
+    description: "Scan a public image for vulnerabilities using Trivy"
+    hints:
+      - "Install: brew install aquasecurity/trivy/trivy"
+      - "Scan nginx: trivy image nginx:latest"
+      - "Scan with severity filter: trivy image --severity HIGH,CRITICAL nginx:latest"
+      - "Output as table (default) or json: trivy image --format json nginx:latest"
+      - "Note the number of CRITICAL and HIGH CVEs"
+
+  - id: non-root-user
+    description: "Write a Dockerfile that creates and switches to a non-root user"
+    hints:
+      - "Add to Dockerfile: RUN addgroup -S appgroup && adduser -S appuser -G appgroup"
+      - "Switch: USER appuser"
+      - "Verify: docker run --rm my-image:secure id"
+      - "uid should NOT be 0 (root)"
+
+  - id: readonly-filesystem
+    description: "Run a container with a read-only root filesystem and observe what breaks"
+    hints:
+      - "docker run --rm --read-only alpine:3.19 sh -c 'echo test > /tmp/test'"
+      - "This will fail — /tmp is on the read-only root"
+      - "Fix: mount a tmpfs: docker run --rm --read-only --tmpfs /tmp alpine:3.19 sh -c 'echo test > /tmp/test && cat /tmp/test'"
+
+  - id: drop-capabilities
+    description: "Run nginx with dropped capabilities and verify it still works"
+    hints:
+      - "Drop all, add only what's needed: docker run --rm --cap-drop=ALL --cap-add=NET_BIND_SERVICE nginx:alpine"
+      - "List capabilities: docker run --rm alpine:3.19 sh -c 'apk add libcap -q && capsh --print'"
+      - "For most apps: --cap-drop=ALL is safe"
+
+  - id: resource-limits
+    description: "Run a container with CPU and memory limits, then verify with docker stats"
+    hints:
+      - "docker run -d --name limited --cpus='0.5' --memory='128m' nginx:alpine"
+      - "docker stats limited --no-stream"
+      - "docker inspect limited | grep -A5 HostConfig | grep -E 'Memory|NanoCpus'"
+      - "docker stop limited && docker rm limited"
+
+  - id: security-audit
+    description: "Use Trivy to scan a Dockerfile for misconfigurations"
+    hints:
+      - "trivy config ./Dockerfile"
+      - "Or scan a directory: trivy config ."
+      - "Common findings: running as root, no HEALTHCHECK, latest tag used"
+      - "Fix findings and re-scan"
+
+validation_steps:
+  - "Trivy is installed and can scan images"
+  - "Container runs as non-root user"
+  - "Read-only filesystem with tmpfs works"
+
+grading_rules:
+  - check: "trivy --version &>/dev/null && echo pass"
+    points: 20
+  - check: "docker run --rm alpine:3.19 id | grep -qv 'uid=0(root)' || docker run --rm --user 1000:1000 alpine:3.19 id | grep -q 'uid=1000'"
+    points: 25
+  - check: "docker run --rm --read-only --tmpfs /tmp alpine:3.19 sh -c 'echo ok > /tmp/t && cat /tmp/t' | grep -q ok"
+    points: 25
+  - check: "docker run --rm --cap-drop=ALL alpine:3.19 echo 'caps dropped' | grep -q 'caps dropped'"
+    points: 30
+
+cleanup_steps:
+  - "docker stop limited 2>/dev/null || true"
+  - "docker rm limited 2>/dev/null || true"
+
+related_docs:
+  - "../../../09-containers/README.md"
+
+related_cloud_services:
+  - "AWS ECR image scanning"
+  - "Azure Defender for Containers"
+  - "GCP Artifact Registry vulnerability scanning"
+
+local_only: true
+cost_warning: null
+safety_warning: null

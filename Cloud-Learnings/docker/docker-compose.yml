@@ -1,0 +1,1548 @@
+# =============================================================================
+# Cloud-Learnings Lab Platform — docker-compose.yml
+# Single compose file — all services with profiles
+#
+# Project name: cloud-learnings-lab
+# Run with: ./run.sh start <profile>
+#           docker compose --project-name cloud-learnings-lab --file docker-compose.yml
+#
+# Profiles:
+#   core          Traefik + Homepage + Nginx toolbox (always lightweight)
+#   dashboard     Homepage + Portainer (opt-in, Docker socket)
+#   data          PostgreSQL + MySQL + MongoDB + Redis + Adminer + Redis Commander
+#   messaging     RabbitMQ + Redpanda + Redpanda Console
+#   aws           LocalStack + AWS CLI helper
+#   azure         Azurite + Azure CLI helper
+#   gcp           GCP Pub/Sub + Firestore emulators + gcloud CLI
+#   cloud         aws + azure + gcp combined (alias via run.sh)
+#   observability Prometheus + Grafana + Loki + Promtail + Tempo + OTel Collector
+#   security      Vault + Keycloak + Trivy + Checkov + Hadolint
+#   cicd          Gitea + Jenkins + Docker Registry
+#   iac           Terraform + OpenTofu + Ansible + kubectl + Helm (CLI-only)
+#   apps          Sample API + Worker + Frontend + Event Producer + Consumer
+#
+# Label prefix: com.cloudlearnings.project
+# =============================================================================
+
+name: cloud-learnings-lab
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  public_net:
+    name: cloud-learnings-public
+    driver: bridge
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.network: "public"
+
+  private_net:
+    name: cloud-learnings-private
+    driver: bridge
+    internal: true
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.network: "private"
+
+  data_net:
+    name: cloud-learnings-data
+    driver: bridge
+    internal: true
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.network: "data"
+
+  observability_net:
+    name: cloud-learnings-observability
+    driver: bridge
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.network: "observability"
+
+  security_net:
+    name: cloud-learnings-security
+    driver: bridge
+    internal: true
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.network: "security"
+
+  ci_net:
+    name: cloud-learnings-ci
+    driver: bridge
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.network: "ci"
+
+  cloud_net:
+    name: cloud-learnings-cloud
+    driver: bridge
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.network: "cloud"
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  postgres_data:
+    name: cloud-learnings-postgres-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  mysql_data:
+    name: cloud-learnings-mysql-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  mongo_data:
+    name: cloud-learnings-mongo-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  redis_data:
+    name: cloud-learnings-redis-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  localstack_data:
+    name: cloud-learnings-localstack-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  azurite_data:
+    name: cloud-learnings-azurite-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  minio_data:
+    name: cloud-learnings-minio-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  prometheus_data:
+    name: cloud-learnings-prometheus-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  grafana_data:
+    name: cloud-learnings-grafana-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  loki_data:
+    name: cloud-learnings-loki-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  tempo_data:
+    name: cloud-learnings-tempo-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  vault_data:
+    name: cloud-learnings-vault-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  keycloak_data:
+    name: cloud-learnings-keycloak-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  gitea_data:
+    name: cloud-learnings-gitea-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  jenkins_data:
+    name: cloud-learnings-jenkins-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  registry_data:
+    name: cloud-learnings-registry-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  rabbitmq_data:
+    name: cloud-learnings-rabbitmq-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  redpanda_data:
+    name: cloud-learnings-redpanda-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+  portainer_data:
+    name: cloud-learnings-portainer-data
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+
+# =============================================================================
+# SERVICES
+# =============================================================================
+services:
+
+  # ===========================================================================
+  # PROFILE: core
+  # Lightweight services always included when any profile is active
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Traefik — Reverse proxy and router
+  # Dashboard: http://localhost:8080
+  # ---------------------------------------------------------------------------
+  traefik:
+    image: traefik:v3.0
+    container_name: cloud-learnings-traefik
+    profiles: [core]
+    restart: unless-stopped
+    command:
+      - "--log.level=INFO"
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=cloud-learnings-public"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.addEntryPointsLabels=true"
+      - "--metrics.prometheus.addServicesLabels=true"
+    ports:
+      - "${TRAEFIK_HTTP_PORT:-80}:80"
+      - "${TRAEFIK_DASHBOARD_PORT:-8080}:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configs/traefik:/etc/traefik/dynamic:ro
+    networks:
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "proxy"
+      traefik.enable: "true"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Homepage — Service dashboard
+  # Dashboard: http://localhost:3000
+  # ---------------------------------------------------------------------------
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: cloud-learnings-homepage
+    profiles: [core, dashboard]
+    restart: unless-stopped
+    ports:
+      - "${HOMEPAGE_PORT:-3000}:3000"
+    volumes:
+      - ./configs/homepage:/app/config:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - public_net
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: "localhost,127.0.0.1"
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "dashboard"
+      traefik.enable: "true"
+      traefik.http.routers.homepage.rule: "Host(`localhost`) && PathPrefix(`/`)"
+      traefik.http.services.homepage.loadbalancer.server.port: "3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Nginx toolbox — Network debugging container
+  # Includes curl, dig, ping, netcat, wget
+  # ---------------------------------------------------------------------------
+  nginx-toolbox:
+    image: nginx:alpine
+    container_name: cloud-learnings-nginx-toolbox
+    profiles: [core]
+    restart: unless-stopped
+    volumes:
+      - ./configs/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - public_net
+      - private_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "toolbox"
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================================================
+  # PROFILE: dashboard (opt-in, Docker socket — security risk)
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Portainer — Docker UI (OPTIONAL — exposes Docker socket, security risk)
+  # Dashboard: http://localhost:9000
+  # Enable with: ENABLE_PORTAINER=true in .env
+  # ---------------------------------------------------------------------------
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: cloud-learnings-portainer
+    profiles: [dashboard]
+    restart: unless-stopped
+    ports:
+      - "${PORTAINER_PORT:-9000}:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
+    networks:
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "docker-ui"
+      # SECURITY NOTE: Portainer has full Docker socket access.
+      # Only use in trusted local environments.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ===========================================================================
+  # PROFILE: data
+  # Databases and cache services
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16
+  # Port: 5432
+  # Connection: postgresql://labuser:labpassword123@localhost:5432/labdb
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: cloud-learnings-postgres
+    profiles: [data]
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-labdb}
+      POSTGRES_USER: ${POSTGRES_USER:-labuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-labpassword123}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./configs/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - data_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "database"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-labuser} -d ${POSTGRES_DB:-labdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # MySQL 8.0
+  # Port: 3306
+  # Connection: mysql://labuser:labpassword123@localhost:3306/labdb
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: cloud-learnings-mysql
+    profiles: [data]
+    restart: unless-stopped
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-labdb}
+      MYSQL_USER: ${MYSQL_USER:-labuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-labpassword123}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword123}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./configs/mysql/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - data_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "database"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword123}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ---------------------------------------------------------------------------
+  # MongoDB 7.0
+  # Port: 27017
+  # Connection: mongodb://admin:adminpassword123@localhost:27017/
+  # ---------------------------------------------------------------------------
+  mongo:
+    image: mongo:7.0
+    container_name: cloud-learnings-mongo
+    profiles: [data]
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-adminpassword123}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-labdb}
+    volumes:
+      - mongo_data:/data/db
+      - ./configs/mongo/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - data_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "database"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Redis 7
+  # Port: 6379
+  # Connection: redis://default:redispassword123@localhost:6379
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: cloud-learnings-redis
+    profiles: [data]
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-redispassword123}
+      --appendonly yes
+      --loglevel notice
+    volumes:
+      - redis_data:/data
+      - ./configs/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - data_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "cache"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispassword123}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Adminer — Database management UI
+  # URL: http://localhost:8081
+  # Connects to: postgres, mysql, mongo
+  # ---------------------------------------------------------------------------
+  adminer:
+    image: adminer:latest
+    container_name: cloud-learnings-adminer
+    profiles: [data]
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT:-8081}:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: nette
+    networks:
+      - public_net
+      - data_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "database-ui"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Redis Commander — Redis UI
+  # URL: http://localhost:8082
+  # ---------------------------------------------------------------------------
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: cloud-learnings-redis-commander
+    profiles: [data]
+    restart: unless-stopped
+    ports:
+      - "${REDIS_COMMANDER_PORT:-8082}:8081"
+    environment:
+      REDIS_HOSTS: "local:redis:6379:0:${REDIS_PASSWORD:-redispassword123}"
+      HTTP_USER: admin
+      HTTP_PASSWORD: admin
+    networks:
+      - public_net
+      - data_net
+    depends_on:
+      redis:
+        condition: service_healthy
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "cache-ui"
+
+  # ===========================================================================
+  # PROFILE: messaging
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ 3.12 with Management Plugin
+  # AMQP: localhost:5672
+  # Management UI: http://localhost:15672  (admin/adminpassword123)
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: cloud-learnings-rabbitmq
+    profiles: [messaging]
+    restart: unless-stopped
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-adminpassword123}
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./configs/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./configs/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    networks:
+      - private_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "messaging"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # ---------------------------------------------------------------------------
+  # Redpanda — Kafka-compatible streaming
+  # Kafka API: localhost:9092
+  # Admin API: localhost:9644
+  # Schema Registry: localhost:8084
+  # ---------------------------------------------------------------------------
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: cloud-learnings-redpanda
+    profiles: [messaging]
+    restart: unless-stopped
+    command:
+      - redpanda
+      - start
+      - --kafka-addr=internal://0.0.0.0:9093,external://0.0.0.0:9092
+      - --advertise-kafka-addr=internal://redpanda:9093,external://localhost:9092
+      - --pandaproxy-addr=internal://0.0.0.0:8083,external://0.0.0.0:18083
+      - --advertise-pandaproxy-addr=internal://redpanda:8083,external://localhost:18083
+      - --schema-registry-addr=internal://0.0.0.0:8081,external://0.0.0.0:${REDPANDA_SCHEMA_REGISTRY_PORT:-8084}
+      - --rpc-addr=redpanda:33145
+      - --advertise-rpc-addr=redpanda:33145
+      - --smp=1
+      - --memory=512M
+      - --mode=dev-container
+      - --default-log-level=warn
+    ports:
+      - "${REDPANDA_KAFKA_PORT:-9092}:9092"
+      - "${REDPANDA_ADMIN_PORT:-9644}:9644"
+      - "${REDPANDA_SCHEMA_REGISTRY_PORT:-8084}:8084"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    networks:
+      - private_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "streaming"
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy.*true' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Redpanda Console — Kafka UI
+  # URL: http://localhost:8083
+  # ---------------------------------------------------------------------------
+  redpanda-console:
+    image: redpandadata/console:latest
+    container_name: cloud-learnings-redpanda-console
+    profiles: [messaging]
+    restart: unless-stopped
+    ports:
+      - "${REDPANDA_CONSOLE_PORT:-8083}:8080"
+    environment:
+      KAFKA_BROKERS: redpanda:9093
+      KAFKA_SCHEMAREGISTRY_ENABLED: "true"
+      KAFKA_SCHEMAREGISTRY_URLS: "http://redpanda:8081"
+    networks:
+      - public_net
+      - private_net
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "streaming-ui"
+
+  # ===========================================================================
+  # PROFILE: aws
+  # LocalStack — AWS service emulator
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # LocalStack — Emulates 50+ AWS services locally
+  # URL: http://localhost:4566
+  # Supported: S3, SQS, SNS, DynamoDB, Lambda, IAM, EC2 (limited), more
+  # Configure AWS CLI: aws --endpoint-url=http://localhost:4566 ...
+  # ---------------------------------------------------------------------------
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: cloud-learnings-localstack
+    profiles: [aws, cloud]
+    restart: unless-stopped
+    ports:
+      - "${LOCALSTACK_PORT:-4566}:4566"
+      - "4510-4559:4510-4559"
+    environment:
+      SERVICES: s3,sqs,sns,dynamodb,iam,lambda,cloudformation,cloudwatch,logs,ec2,kms,secretsmanager,sts,route53,apigateway,events,ses
+      DEBUG: "0"
+      LAMBDA_EXECUTOR: local
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      DOCKER_HOST: unix:///var/run/docker.sock
+      DATA_DIR: /var/lib/localstack
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configs/localstack/init:/etc/localstack/init/ready.d:ro
+    networks:
+      - cloud_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "aws-emulator"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4566/_localstack/health | grep -q '\"running\"\\|\"available\"' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # AWS CLI helper — pre-configured for LocalStack
+  # Usage: docker exec -it cloud-learnings-aws-cli aws s3 ls
+  # ---------------------------------------------------------------------------
+  aws-cli:
+    image: amazon/aws-cli:latest
+    container_name: cloud-learnings-aws-cli
+    profiles: [aws, cloud]
+    restart: "no"
+    entrypoint: /bin/sh
+    command: ["-c", "tail -f /dev/null"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ENDPOINT_URL: http://localstack:4566
+    networks:
+      - cloud_net
+    depends_on:
+      localstack:
+        condition: service_healthy
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "aws-cli"
+
+  # ---------------------------------------------------------------------------
+  # MinIO — S3-compatible object storage
+  # Console: http://localhost:9002  (minioadmin/minioadmin123)
+  # S3 API: http://localhost:9001
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: cloud-learnings-minio
+    profiles: [aws, cloud]
+    restart: unless-stopped
+    command: server /data --console-address ":9002"
+    ports:
+      - "${MINIO_PORT:-9001}:9000"
+      - "${MINIO_CONSOLE_PORT:-9002}:9002"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    volumes:
+      - minio_data:/data
+    networks:
+      - cloud_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "object-storage"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ===========================================================================
+  # PROFILE: azure
+  # Azurite — Azure Storage emulator
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Azurite — Azure Blob, Queue, Table storage emulator
+  # Blob:  http://localhost:10000/devstoreaccount1
+  # Queue: http://localhost:10001/devstoreaccount1
+  # Table: http://localhost:10002/devstoreaccount1
+  # Connection string from .env.example
+  # ---------------------------------------------------------------------------
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: cloud-learnings-azurite
+    profiles: [azure, cloud]
+    restart: unless-stopped
+    command: >
+      azurite
+      --blobHost 0.0.0.0
+      --queueHost 0.0.0.0
+      --tableHost 0.0.0.0
+      --loose
+      --skipApiVersionCheck
+    ports:
+      - "${AZURITE_BLOB_PORT:-10000}:10000"
+      - "${AZURITE_QUEUE_PORT:-10001}:10001"
+      - "${AZURITE_TABLE_PORT:-10002}:10002"
+    volumes:
+      - azurite_data:/data
+    networks:
+      - cloud_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "azure-emulator"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 10000 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Azure CLI helper — pre-configured for Azurite
+  # Usage: docker exec -it cloud-learnings-azure-cli az storage blob list ...
+  # ---------------------------------------------------------------------------
+  azure-cli:
+    image: mcr.microsoft.com/azure-cli:latest
+    container_name: cloud-learnings-azure-cli
+    profiles: [azure, cloud]
+    restart: "no"
+    entrypoint: /bin/sh
+    command: ["-c", "tail -f /dev/null"]
+    environment:
+      AZURE_STORAGE_ACCOUNT: ${AZURE_STORAGE_ACCOUNT:-devstoreaccount1}
+      AZURE_STORAGE_KEY: ${AZURE_STORAGE_KEY:-Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==}
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
+    networks:
+      - cloud_net
+    depends_on:
+      azurite:
+        condition: service_healthy
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "azure-cli"
+
+  # ===========================================================================
+  # PROFILE: gcp
+  # GCP emulators — Pub/Sub and Firestore
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # GCP Pub/Sub Emulator
+  # Endpoint: localhost:8085
+  # Set: PUBSUB_EMULATOR_HOST=localhost:8085
+  # Note: Only basic Pub/Sub is emulated. Many GCP services require real GCP.
+  # ---------------------------------------------------------------------------
+  gcp-pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:slim
+    container_name: cloud-learnings-gcp-pubsub
+    profiles: [gcp, cloud]
+    restart: unless-stopped
+    command: >
+      gcloud beta emulators pubsub start
+      --host-port=0.0.0.0:8085
+      --project=${GCP_PROJECT_ID:-local-dev-project}
+    ports:
+      - "${PUBSUB_EMULATOR_PORT:-8085}:8085"
+    environment:
+      PUBSUB_EMULATOR_HOST: 0.0.0.0:8085
+      PUBSUB_PROJECT_ID: ${GCP_PROJECT_ID:-local-dev-project}
+    networks:
+      - cloud_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "gcp-pubsub"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8085 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # GCP Firestore Emulator
+  # Endpoint: localhost:8086
+  # Set: FIRESTORE_EMULATOR_HOST=localhost:8086
+  # ---------------------------------------------------------------------------
+  gcp-firestore:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:slim
+    container_name: cloud-learnings-gcp-firestore
+    profiles: [gcp, cloud]
+    restart: unless-stopped
+    command: >
+      gcloud beta emulators firestore start
+      --host-port=0.0.0.0:8086
+      --project=${GCP_PROJECT_ID:-local-dev-project}
+    ports:
+      - "${FIRESTORE_EMULATOR_PORT:-8086}:8086"
+    environment:
+      FIRESTORE_EMULATOR_HOST: 0.0.0.0:8086
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-local-dev-project}
+    networks:
+      - cloud_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "gcp-firestore"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8086 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # gcloud CLI helper
+  # Usage: docker exec -it cloud-learnings-gcloud-cli gcloud pubsub topics list
+  # ---------------------------------------------------------------------------
+  gcloud-cli:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:slim
+    container_name: cloud-learnings-gcloud-cli
+    profiles: [gcp, cloud]
+    restart: "no"
+    entrypoint: /bin/sh
+    command: ["-c", "tail -f /dev/null"]
+    environment:
+      PUBSUB_EMULATOR_HOST: gcp-pubsub:8085
+      FIRESTORE_EMULATOR_HOST: gcp-firestore:8086
+      GCLOUD_PROJECT: ${GCP_PROJECT_ID:-local-dev-project}
+    networks:
+      - cloud_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "gcp-cli"
+
+  # ===========================================================================
+  # PROFILE: observability
+  # Full metrics, logs, traces stack
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Prometheus — Metrics collection
+  # URL: http://localhost:9090
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: cloud-learnings-prometheus
+    profiles: [observability]
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./configs/prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    networks:
+      - observability_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "metrics"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # Grafana — Dashboards and visualization
+  # URL: http://localhost:3001  (admin/admin)
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: cloud-learnings-grafana
+    profiles: [observability]
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_INSTALL_PLUGINS: ""
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - observability_net
+      - public_net
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "visualization"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Loki — Log aggregation
+  # URL: http://localhost:3100
+  # ---------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:latest
+    container_name: cloud-learnings-loki
+    profiles: [observability]
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ./configs/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - observability_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "logging"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # Promtail — Log collector (reads Docker container logs)
+  # ---------------------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:latest
+    container_name: cloud-learnings-promtail
+    profiles: [observability]
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    volumes:
+      - ./configs/promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+      - observability_net
+    depends_on:
+      loki:
+        condition: service_healthy
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "log-collector"
+
+  # ---------------------------------------------------------------------------
+  # Tempo — Distributed tracing backend
+  # URL: http://localhost:3200
+  # OTLP gRPC: localhost:4317
+  # OTLP HTTP: localhost:4318
+  # ---------------------------------------------------------------------------
+  tempo:
+    image: grafana/tempo:latest
+    container_name: cloud-learnings-tempo
+    profiles: [observability]
+    restart: unless-stopped
+    command: -config.file=/etc/tempo/tempo.yaml
+    ports:
+      - "${TEMPO_PORT:-3200}:3200"
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./configs/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/tmp/tempo
+    networks:
+      - observability_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "tracing"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3200/ready || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # OpenTelemetry Collector — Telemetry pipeline
+  # OTLP gRPC: 4317  HTTP: 4318  Prometheus scrape: 8889
+  # ---------------------------------------------------------------------------
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: cloud-learnings-otel-collector
+    profiles: [observability]
+    restart: unless-stopped
+    command: ["--config=/etc/otel/otel-config.yaml"]
+    ports:
+      - "${OTEL_COLLECTOR_GRPC_PORT:-4317}:4317"
+      - "${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318"
+      - "${OTEL_COLLECTOR_PROMETHEUS_PORT:-8889}:8889"
+    volumes:
+      - ./configs/otel-collector/otel-config.yaml:/etc/otel/otel-config.yaml:ro
+    networks:
+      - observability_net
+      - public_net
+    depends_on:
+      - tempo
+      - loki
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "otel-collector"
+
+  # ===========================================================================
+  # PROFILE: security
+  # Vault, Keycloak, and security scanner containers
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Vault — Secrets management (dev mode — NOT for production)
+  # URL: http://localhost:8200
+  # Root token: dev-root-token (from .env)
+  # WARNING: Dev mode stores data in memory — data lost on restart
+  # ---------------------------------------------------------------------------
+  vault:
+    image: hashicorp/vault:latest
+    container_name: cloud-learnings-vault
+    profiles: [security]
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
+    command: server -dev
+    ports:
+      - "${VAULT_PORT:-8200}:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID:-dev-root-token}
+      VAULT_DEV_LISTEN_ADDRESS: ${VAULT_DEV_LISTEN_ADDRESS:-0.0.0.0:8200}
+      VAULT_ADDR: "http://0.0.0.0:8200"
+    volumes:
+      - vault_data:/vault/data
+      - ./configs/vault/vault.hcl:/vault/config/vault.hcl:ro
+    networks:
+      - security_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "secrets"
+    healthcheck:
+      test: ["CMD-SHELL", "vault status -address=http://localhost:8200 2>/dev/null | grep -q 'Initialized' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # Keycloak — Identity and SSO
+  # URL: http://localhost:8180/admin  (admin/adminpassword123)
+  # Using in-memory H2 database for local dev (dev-mem mode)
+  # ---------------------------------------------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: cloud-learnings-keycloak
+    profiles: [security]
+    restart: unless-stopped
+    command: start-dev
+    ports:
+      - "${KEYCLOAK_PORT:-8180}:8080"
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-adminpassword123}
+      KC_DB: ${KC_DB:-dev-mem}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    networks:
+      - security_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "identity"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 90s
+
+  # ---------------------------------------------------------------------------
+  # Trivy — Container vulnerability scanner
+  # Usage: docker exec -it cloud-learnings-trivy trivy image nginx:alpine
+  # ---------------------------------------------------------------------------
+  trivy:
+    image: aquasec/trivy:latest
+    container_name: cloud-learnings-trivy
+    profiles: [security]
+    restart: "no"
+    entrypoint: /bin/sh
+    command: ["-c", "tail -f /dev/null"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./reports/security-scans:/reports
+    networks:
+      - security_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "scanner"
+
+  # ---------------------------------------------------------------------------
+  # Checkov — IaC security scanner
+  # Usage: docker exec -it cloud-learnings-checkov checkov -d /workspace
+  # ---------------------------------------------------------------------------
+  checkov:
+    image: bridgecrew/checkov:latest
+    container_name: cloud-learnings-checkov
+    profiles: [security]
+    restart: "no"
+    entrypoint: /bin/sh
+    command: ["-c", "tail -f /dev/null"]
+    volumes:
+      - ./infrastructure:/workspace:ro
+      - ./reports/security-scans:/reports
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "iac-scanner"
+
+  # ---------------------------------------------------------------------------
+  # Hadolint — Dockerfile linter
+  # Usage: docker exec -it cloud-learnings-hadolint hadolint /workspace/Dockerfile
+  # ---------------------------------------------------------------------------
+  hadolint:
+    image: hadolint/hadolint:latest
+    container_name: cloud-learnings-hadolint
+    profiles: [security]
+    restart: "no"
+    entrypoint: /bin/sh
+    command: ["-c", "tail -f /dev/null"]
+    volumes:
+      - ./apps:/workspace:ro
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "dockerfile-linter"
+
+  # ===========================================================================
+  # PROFILE: cicd
+  # Gitea, Jenkins, Docker Registry
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Gitea — Self-hosted Git service
+  # URL: http://localhost:3002  (gitadmin/gitpassword123)
+  # SSH: localhost:2222
+  # ---------------------------------------------------------------------------
+  gitea:
+    image: gitea/gitea:latest
+    container_name: cloud-learnings-gitea
+    profiles: [cicd]
+    restart: unless-stopped
+    ports:
+      - "${GITEA_PORT:-3002}:3000"
+      - "${GITEA_SSH_PORT:-2222}:22"
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      GITEA__database__DB_TYPE: sqlite3
+      GITEA__server__DOMAIN: localhost
+      GITEA__server__ROOT_URL: "http://localhost:${GITEA_PORT:-3002}/"
+      GITEA__server__SSH_PORT: ${GITEA_SSH_PORT:-2222}
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__service__DISABLE_REGISTRATION: "false"
+    volumes:
+      - gitea_data:/data
+    networks:
+      - ci_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "git"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/swagger || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Jenkins — CI/CD automation server
+  # URL: http://localhost:8090
+  # Initial setup: check logs for unlock key on first start
+  # ---------------------------------------------------------------------------
+  jenkins:
+    build:
+      context: ./configs/jenkins
+      dockerfile: Dockerfile
+    image: cloud-learnings-jenkins:local
+    container_name: cloud-learnings-jenkins
+    profiles: [cicd]
+    restart: unless-stopped
+    ports:
+      - "${JENKINS_PORT:-8090}:8080"
+      - "${JENKINS_AGENT_PORT:-50000}:50000"
+    environment:
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false -Xmx512m"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - ci_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "ci"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/login || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 120s
+
+  # ---------------------------------------------------------------------------
+  # Docker Registry — Local container image registry
+  # URL: http://localhost:5000
+  # Push: docker push localhost:5000/myimage:tag
+  # ---------------------------------------------------------------------------
+  registry:
+    image: registry:2
+    container_name: cloud-learnings-registry
+    profiles: [cicd]
+    restart: unless-stopped
+    ports:
+      - "${REGISTRY_PORT:-5000}:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+    networks:
+      - ci_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "registry"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 5000 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================================================================
+  # PROFILE: iac
+  # CLI-only infrastructure-as-code tools
+  # These run as long-lived containers you can exec into
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Terraform CLI
+  # Usage: docker exec -it cloud-learnings-terraform terraform init
+  # ---------------------------------------------------------------------------
+  terraform:
+    image: hashicorp/terraform:latest
+    container_name: cloud-learnings-terraform
+    profiles: [iac]
+    restart: "no"
+    entrypoint: /bin/sh
+    command: ["-c", "tail -f /dev/null"]
+    working_dir: /workspace
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+    volumes:
+      - ./infrastructure/terraform:/workspace
+      - ./labs:/labs:ro
+    networks:
+      - cloud_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "terraform"
+
+  # ---------------------------------------------------------------------------
+  # OpenTofu CLI (open-source Terraform fork)
+  # Usage: docker exec -it cloud-learnings-opentofu tofu init
+  # ---------------------------------------------------------------------------
+  opentofu:
+    image: ghcr.io/opentofu/opentofu:latest
+    container_name: cloud-learnings-opentofu
+    profiles: [iac]
+    restart: "no"
+    entrypoint: /bin/sh
+    command: ["-c", "tail -f /dev/null"]
+    working_dir: /workspace
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+    volumes:
+      - ./infrastructure/opentofu:/workspace
+    networks:
+      - cloud_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "opentofu"
+
+  # ---------------------------------------------------------------------------
+  # Ansible CLI
+  # Usage: docker exec -it cloud-learnings-ansible ansible-playbook -i /workspace/inventory playbook.yml
+  # ---------------------------------------------------------------------------
+  ansible:
+    image: cytopia/ansible:latest
+    container_name: cloud-learnings-ansible
+    profiles: [iac]
+    restart: "no"
+    entrypoint: /bin/sh
+    command: ["-c", "tail -f /dev/null"]
+    working_dir: /workspace
+    volumes:
+      - ./infrastructure/ansible:/workspace
+    networks:
+      - private_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "ansible"
+
+  # ---------------------------------------------------------------------------
+  # kubectl CLI
+  # Usage: docker exec -it cloud-learnings-kubectl kubectl get nodes
+  # ---------------------------------------------------------------------------
+  kubectl:
+    image: bitnami/kubectl:latest
+    container_name: cloud-learnings-kubectl
+    profiles: [iac]
+    restart: "no"
+    entrypoint: /bin/sh
+    command: ["-c", "tail -f /dev/null"]
+    user: root
+    volumes:
+      - ./infrastructure/kubernetes:/workspace
+      - ${HOME}/.kube:/root/.kube:ro
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "kubectl"
+
+  # ---------------------------------------------------------------------------
+  # Helm CLI
+  # Usage: docker exec -it cloud-learnings-helm helm list
+  # ---------------------------------------------------------------------------
+  helm:
+    image: alpine/helm:latest
+    container_name: cloud-learnings-helm
+    profiles: [iac]
+    restart: "no"
+    entrypoint: /bin/sh
+    command: ["-c", "tail -f /dev/null"]
+    volumes:
+      - ./infrastructure/helm:/workspace
+      - ${HOME}/.kube:/root/.kube:ro
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "helm"
+
+  # ===========================================================================
+  # PROFILE: apps
+  # Sample applications for labs and practice
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # Sample API — Python FastAPI application
+  # URL: http://localhost:8000
+  # Endpoints: /health /metrics /api/v1/items
+  # Exports: Prometheus metrics, structured JSON logs, OTLP traces
+  # ---------------------------------------------------------------------------
+  sample-api:
+    build:
+      context: ./apps/sample-api
+      dockerfile: Dockerfile
+    image: cloud-learnings-sample-api:local
+    container_name: cloud-learnings-sample-api
+    profiles: [apps]
+    restart: unless-stopped
+    ports:
+      - "${SAMPLE_API_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-labuser}:${POSTGRES_PASSWORD:-labpassword123}@postgres:5432/${POSTGRES_DB:-labdb}"
+      REDIS_URL: "redis://default:${REDIS_PASSWORD:-redispassword123}@redis:6379"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OTEL_SERVICE_NAME: "sample-api"
+      LOG_LEVEL: "INFO"
+    networks:
+      - public_net
+      - data_net
+      - observability_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "sample-api"
+      traefik.enable: "true"
+      traefik.http.routers.api.rule: "PathPrefix(`/api`)"
+      traefik.http.services.api.loadbalancer.server.port: "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # Sample Worker — Background task processor
+  # Consumes from RabbitMQ, writes to PostgreSQL
+  # ---------------------------------------------------------------------------
+  sample-worker:
+    build:
+      context: ./apps/sample-worker
+      dockerfile: Dockerfile
+    image: cloud-learnings-sample-worker:local
+    container_name: cloud-learnings-sample-worker
+    profiles: [apps]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-labuser}:${POSTGRES_PASSWORD:-labpassword123}@postgres:5432/${POSTGRES_DB:-labdb}"
+      RABBITMQ_URL: "amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-adminpassword123}@rabbitmq:5672/"
+      REDIS_URL: "redis://default:${REDIS_PASSWORD:-redispassword123}@redis:6379"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      OTEL_SERVICE_NAME: "sample-worker"
+      LOG_LEVEL: "INFO"
+    networks:
+      - private_net
+      - data_net
+      - observability_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "sample-worker"
+
+  # ---------------------------------------------------------------------------
+  # Sample Frontend — Nginx-served static site
+  # URL: http://localhost:8100
+  # ---------------------------------------------------------------------------
+  sample-frontend:
+    build:
+      context: ./apps/sample-frontend
+      dockerfile: Dockerfile
+    image: cloud-learnings-sample-frontend:local
+    container_name: cloud-learnings-sample-frontend
+    profiles: [apps]
+    restart: unless-stopped
+    ports:
+      - "${SAMPLE_FRONTEND_PORT:-8100}:80"
+    networks:
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "frontend"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Event Producer — Publishes events to RabbitMQ / Redpanda
+  # URL: http://localhost:8001
+  # ---------------------------------------------------------------------------
+  event-producer:
+    build:
+      context: ./apps/event-producer
+      dockerfile: Dockerfile
+    image: cloud-learnings-event-producer:local
+    container_name: cloud-learnings-event-producer
+    profiles: [apps]
+    restart: unless-stopped
+    ports:
+      - "${EVENT_PRODUCER_PORT:-8001}:8001"
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-adminpassword123}@rabbitmq:5672/"
+      KAFKA_BOOTSTRAP_SERVERS: "redpanda:9093"
+      OTEL_SERVICE_NAME: "event-producer"
+    networks:
+      - private_net
+      - public_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "event-producer"
+
+  # ---------------------------------------------------------------------------
+  # Event Consumer — Consumes events from RabbitMQ / Redpanda
+  # ---------------------------------------------------------------------------
+  event-consumer:
+    build:
+      context: ./apps/event-consumer
+      dockerfile: Dockerfile
+    image: cloud-learnings-event-consumer:local
+    container_name: cloud-learnings-event-consumer
+    profiles: [apps]
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-adminpassword123}@rabbitmq:5672/"
+      KAFKA_BOOTSTRAP_SERVERS: "redpanda:9093"
+      OTEL_SERVICE_NAME: "event-consumer"
+    networks:
+      - private_net
+    labels:
+      com.cloudlearnings.project: "cloud-learnings-lab"
+      com.cloudlearnings.component: "event-consumer"

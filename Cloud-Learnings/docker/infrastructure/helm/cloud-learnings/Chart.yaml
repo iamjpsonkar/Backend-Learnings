@@ -1,0 +1,18 @@
+apiVersion: v2
+name: cloud-learnings
+description: Sample application Helm chart for cloud practice labs
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - practice
+  - cloud
+  - learning
+
+maintainers:
+  - name: cloud-learnings-lab
+    email: lab@example.local
+
+annotations:
+  com.cloudlearnings.project: cloud-learnings-lab

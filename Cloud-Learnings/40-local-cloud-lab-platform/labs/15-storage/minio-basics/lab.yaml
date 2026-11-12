@@ -1,0 +1,112 @@
+id: minio-basics
+title: "MinIO: S3-Compatible Object Storage Operations"
+description: >
+  Practice object storage operations using MinIO — an S3-compatible storage server
+  that runs locally. Learn bucket management, object operations, access policies,
+  lifecycle rules, and the S3-compatible API. MinIO is already running as part of
+  the core platform profile.
+
+difficulty: beginner
+estimated_time: "45 minutes"
+category: storage
+
+prerequisites:
+  - "Core services running: make start-core (MinIO included)"
+  - "mc (MinIO Client) or aws CLI installed"
+
+tools_required:
+  - curl
+
+docker_profiles:
+  - core
+
+ports_used:
+  - 9000
+  - 9001
+
+learning_objectives:
+  - Navigate MinIO console and understand bucket/object concepts
+  - Use MinIO Client (mc) or aws CLI with S3-compatible API
+  - Upload, download, list, and delete objects
+  - Set bucket access policies
+  - Configure bucket lifecycle rules
+  - Generate presigned URLs for temporary object access
+
+tasks:
+  - id: explore-console
+    description: "Log in to the MinIO console at http://localhost:9001 with labadmin/labpassword123"
+    hints:
+      - "You'll see the existing buckets: lab-bucket, terraform-state, backups"
+      - "Click on lab-bucket to see objects (empty initially)"
+      - "The console is equivalent to the AWS S3 console"
+
+  - id: configure-mc
+    description: "Configure the MinIO Client (mc) to connect to the local MinIO instance"
+    hints:
+      - "Install mc: brew install minio/stable/mc  OR  download from https://min.io/download#/macos"
+      - "Configure: mc alias set local http://localhost:9000 labadmin labpassword123"
+      - "Test: mc ls local/"
+
+  - id: create-bucket
+    description: "Create a new bucket named 'my-lab-storage' using mc or the console"
+    hints:
+      - "mc command: mc mb local/my-lab-storage"
+      - "Console: click 'Create Bucket' in the MinIO UI"
+      - "List buckets: mc ls local/"
+
+  - id: upload-objects
+    description: "Upload at least 5 files to your bucket organized in a 'folder' (prefix) structure"
+    hints:
+      - "Create test files and a folder structure locally first"
+      - "mc command: mc cp file.txt local/my-lab-storage/docs/file.txt"
+      - "Upload a directory: mc cp --recursive ./mydir local/my-lab-storage/mydir/"
+
+  - id: set-policy
+    description: "Set the bucket to allow anonymous read access"
+    hints:
+      - "mc policy set download local/my-lab-storage"
+      - "Test: curl http://localhost:9000/my-lab-storage/docs/file.txt"
+
+  - id: presigned-url
+    description: "Generate a presigned URL for one of your objects, valid for 10 minutes"
+    hints:
+      - "mc command: mc share download --expire 10m local/my-lab-storage/docs/file.txt"
+      - "Test the URL with curl"
+      - "Presigned URLs allow temporary access without credentials"
+
+  - id: lifecycle-rule
+    description: "Set a lifecycle rule to delete objects older than 30 days from the 'temp/' prefix"
+    hints:
+      - "In the console: Bucket > Lifecycle > Add Lifecycle Rule"
+      - "Set prefix: temp/ and transition/expiration to 30 days"
+
+validation_steps:
+  - "MinIO console loads at http://localhost:9001"
+  - "Bucket my-lab-storage exists with objects"
+  - "Anonymous read access works"
+
+grading_rules:
+  - check: "curl -sf http://localhost:9001 | grep -qi minio"
+    points: 10
+  - check: "curl -sf -u labadmin:labpassword123 http://localhost:9000/ | grep -qi ListAllMyBucketsResult"
+    points: 20
+  - check: "curl -sf http://localhost:9000/my-lab-storage/ | grep -qi ListBucketResult"
+    points: 30
+  - check: "curl -sf http://localhost:9000/my-lab-storage/ | python3 -c \"import sys; content=sys.stdin.read(); exit(0 if 'Contents' in content or 'Key' in content else 1)\""
+    points: 40
+
+cleanup_steps:
+  - "mc rm --recursive --force local/my-lab-storage || true"
+  - "mc rb local/my-lab-storage || true"
+
+related_docs:
+  - "../../../05-aws/05-storage/s3.md"
+
+related_cloud_services:
+  - "AWS S3"
+  - "Azure Blob Storage"
+  - "GCP Cloud Storage"
+
+local_only: true
+cost_warning: null
+safety_warning: null

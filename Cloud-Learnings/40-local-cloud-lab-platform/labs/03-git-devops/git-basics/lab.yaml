@@ -1,0 +1,118 @@
+id: git-basics
+title: "Git: Version Control Fundamentals"
+description: >
+  Practice the core Git workflow that every developer and DevOps engineer
+  uses daily: init, stage, commit, branch, merge, resolve conflicts, and
+  inspect history. Work through progressively complex scenarios covering
+  the scenarios you'll see in real CI/CD pipelines.
+
+difficulty: beginner
+estimated_time: "45 minutes"
+category: git-devops
+
+prerequisites:
+  - "git installed (git --version)"
+
+tools_required:
+  - git
+
+docker_profiles: []
+
+ports_used: []
+
+learning_objectives:
+  - Initialize a repository and configure user identity
+  - Stage and commit changes with meaningful messages
+  - Create, switch, and delete branches
+  - Merge branches and resolve a merge conflict
+  - Inspect history with git log, git diff, git show
+  - Use git stash to save and restore work-in-progress
+  - Understand HEAD, detached HEAD state
+
+tasks:
+  - id: init-and-config
+    description: "Initialize a new git repository and configure your user name and email"
+    hints:
+      - "mkdir ~/git-lab && cd ~/git-lab && git init"
+      - "git config user.name 'Lab User'"
+      - "git config user.email 'lab@cloudlab.local'"
+      - "Verify: git config --list"
+
+  - id: first-commit
+    description: "Create a README.md and a src/main.py file, stage them, and make your first commit"
+    hints:
+      - "echo '# My Lab Project' > README.md"
+      - "mkdir src && echo 'print(\"hello world\")' > src/main.py"
+      - "git add README.md src/main.py"
+      - "git commit -m 'feat: initial project structure'"
+
+  - id: branching
+    description: "Create a feature branch, make 2 commits on it, then switch back to main"
+    hints:
+      - "git checkout -b feature/add-config"
+      - "echo 'DEBUG=true' > config.env && git add config.env && git commit -m 'feat: add config'"
+      - "echo 'PORT=8080' >> config.env && git add config.env && git commit -m 'feat: add port config'"
+      - "git checkout main (or master)"
+
+  - id: merge
+    description: "Merge your feature branch into main using a fast-forward merge, then verify the history"
+    hints:
+      - "git merge feature/add-config"
+      - "Inspect log: git log --oneline --graph"
+      - "Delete the branch: git branch -d feature/add-config"
+
+  - id: conflict-resolution
+    description: "Create a merge conflict: edit the same line on two branches, then resolve it"
+    hints:
+      - "On main: echo 'version=1.0' > version.txt && git add version.txt && git commit -m 'add version'"
+      - "git checkout -b hotfix/version"
+      - "echo 'version=1.1-hotfix' > version.txt && git add version.txt && git commit -m 'hotfix version'"
+      - "git checkout main && echo 'version=1.1-main' > version.txt && git add version.txt && git commit -m 'bump version'"
+      - "git merge hotfix/version — this will conflict"
+      - "Open version.txt, remove conflict markers, save"
+      - "git add version.txt && git commit -m 'fix: resolve version conflict'"
+
+  - id: git-stash
+    description: "Make changes without committing, stash them, switch branches, then restore the stash"
+    hints:
+      - "echo 'work in progress' >> README.md"
+      - "git stash push -m 'wip: updating readme'"
+      - "git stash list"
+      - "git stash pop"
+
+  - id: history-inspection
+    description: "Use git log, git diff, and git show to understand the project history"
+    hints:
+      - "Full log: git log --oneline --graph --all"
+      - "See what changed in last commit: git show HEAD"
+      - "Diff between branches: git diff main..hotfix/version 2>/dev/null || git log --oneline"
+      - "Who changed what: git log --format='%h %an %s'"
+
+validation_steps:
+  - "git is installed and version >= 2.30"
+  - "Repository initialized with at least 3 commits"
+  - "Merge conflict scenario completed"
+
+grading_rules:
+  - check: "git --version | grep -qE 'git version 2\\.[3-9]'"
+    points: 10
+  - check: "cd /tmp && rm -rf git-grade-test && mkdir git-grade-test && cd git-grade-test && git init -q && git config user.email test@test.com && git config user.name Test && echo hi > f.txt && git add . && git commit -q -m 'test' && git log --oneline | grep -q test && echo pass"
+    points: 30
+  - check: "cd /tmp/git-grade-test 2>/dev/null && git checkout -q -b testbranch && echo branch > b.txt && git add . && git commit -q -m 'branch commit' && git checkout -q main 2>/dev/null || git checkout -q master 2>/dev/null && git merge -q testbranch && git log --oneline | grep -q 'branch commit' && echo pass"
+    points: 30
+  - check: "git log --version &>/dev/null && echo pass"
+    points: 30
+
+cleanup_steps:
+  - "rm -rf ~/git-lab || true"
+  - "rm -rf /tmp/git-grade-test || true"
+
+related_docs:
+  - "../../../04-git-devops/README.md"
+
+related_cloud_services:
+  - "GitHub, GitLab, Bitbucket, Azure DevOps Repos"
+
+local_only: true
+cost_warning: null
+safety_warning: null

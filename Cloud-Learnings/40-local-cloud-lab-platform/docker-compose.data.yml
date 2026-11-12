@@ -1,0 +1,236 @@
+# docker-compose.data.yml — Data services
+# PostgreSQL, MongoDB, Redis, RabbitMQ, Redpanda (Kafka-compatible)
+# ~2 GB RAM
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.data.yml \
+#     --profile core --profile data up -d
+
+name: local-cloud-lab
+
+networks:
+  cloud-lab-network:
+    external: true
+
+volumes:
+  postgres-data:
+    name: cloud-lab-postgres-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+  mongodb-data:
+    name: cloud-lab-mongodb-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+  redis-data:
+    name: cloud-lab-redis-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+  rabbitmq-data:
+    name: cloud-lab-rabbitmq-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+  redpanda-data:
+    name: cloud-lab-redpanda-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+
+services:
+
+  # ─────────────────────────────────────────────
+  # PostgreSQL — SQL database
+  # localhost:5432
+  # User: labuser / labpassword123 / labdb
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: cloud-lab-postgres
+    profiles: [data]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-labdb}
+      POSTGRES_USER: ${POSTGRES_USER:-labuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-labpassword123}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./configs/postgres/init/:/docker-entrypoint-initdb.d/:ro
+    networks:
+      cloud-lab-network:
+        ipv4_address: 172.20.0.40
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-labuser} -d ${POSTGRES_DB:-labdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # MongoDB — Document database
+  # localhost:27017
+  # ─────────────────────────────────────────────
+  mongodb:
+    image: mongo:7.0
+    container_name: cloud-lab-mongodb
+    profiles: [data]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_INITDB_ROOT_USERNAME:-labadmin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD:-labpassword123}
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-labdb}
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    volumes:
+      - mongodb-data:/data/db
+      - ./configs/mongodb/init/:/docker-entrypoint-initdb.d/:ro
+    networks:
+      cloud-lab-network:
+        ipv4_address: 172.20.0.42
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: mongodb
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Redis — Cache and message broker
+  # localhost:6379
+  # ─────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: cloud-lab-redis
+    profiles: [data]
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-labpassword123}
+      --appendonly yes
+      --appendfsync everysec
+      --loglevel notice
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      cloud-lab-network:
+        ipv4_address: 172.20.0.43
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-labpassword123}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # RabbitMQ — Message broker
+  # localhost:5672 (AMQP), localhost:15672 (management UI)
+  # Login: labuser / labpassword123
+  # ─────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: cloud-lab-rabbitmq
+    profiles: [data]
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-labuser}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-labpassword123}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-labvhost}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./configs/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    networks:
+      cloud-lab-network:
+        ipv4_address: 172.20.0.45
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: rabbitmq
+      traefik.enable: "true"
+      traefik.http.routers.rabbitmq.rule: "Host(`rabbitmq.localhost`)"
+      traefik.http.services.rabbitmq.loadbalancer.server.port: "15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Redpanda — Kafka-compatible streaming platform
+  # Kafka API: localhost:9092
+  # Schema Registry: localhost:8081
+  # Admin API: localhost:9644
+  # Console UI: localhost:8082
+  # ─────────────────────────────────────────────
+  redpanda:
+    image: redpandadata/redpanda:v23.3.1
+    container_name: cloud-lab-redpanda
+    profiles: [data]
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --kafka-addr=PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr=0.0.0.0:8082
+      - --advertise-pandaproxy-addr=localhost:8082
+      - --schema-registry-addr=0.0.0.0:8081
+      - --rpc-addr=0.0.0.0:33145
+      - --advertise-rpc-addr=redpanda:33145
+    ports:
+      - "${REDPANDA_KAFKA_PORT:-9092}:9092"
+      - "${REDPANDA_SCHEMA_REGISTRY_PORT:-8081}:8081"
+      - "${REDPANDA_ADMIN_PORT:-9644}:9644"
+      - "${REDPANDA_CONSOLE_PORT:-8082}:8082"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    networks:
+      cloud-lab-network:
+        ipv4_address: 172.20.0.44
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: redpanda
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # Redpanda Console — Web UI for Redpanda
+  redpanda-console:
+    image: redpandadata/console:v2.4.0
+    container_name: cloud-lab-redpanda-console
+    profiles: [data]
+    environment:
+      KAFKA_BROKERS: redpanda:29092
+      KAFKA_SCHEMAREGISTRY_ENABLED: "true"
+      KAFKA_SCHEMAREGISTRY_URLS: "http://redpanda:8081"
+    ports:
+      - "8083:8080"
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: redpanda-console
+      traefik.enable: "true"
+      traefik.http.routers.redpanda-console.rule: "Host(`redpanda.localhost`)"
+      traefik.http.services.redpanda-console.loadbalancer.server.port: "8080"
+    depends_on:
+      - redpanda
+    restart: unless-stopped

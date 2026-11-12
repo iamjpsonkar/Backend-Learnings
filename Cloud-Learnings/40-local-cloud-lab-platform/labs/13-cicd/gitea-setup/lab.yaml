@@ -1,0 +1,137 @@
+id: gitea-cicd-pipeline
+title: "CI/CD: Build a Pipeline with Gitea and Woodpecker CI"
+description: >
+  Build a complete CI/CD pipeline using Gitea (self-hosted Git) and Woodpecker CI
+  (lightweight CI server). Push code, trigger an automated pipeline that lints,
+  tests, and builds a Docker image — all locally. This replicates real-world
+  GitHub Actions or GitLab CI workflows.
+
+difficulty: intermediate
+estimated_time: "75 minutes"
+category: cicd
+
+prerequisites:
+  - "CI/CD stack running: make start-cicd"
+  - "Docker running"
+  - "git installed"
+
+tools_required:
+  - git
+  - curl
+  - docker
+
+docker_profiles:
+  - cicd
+
+ports_used:
+  - 18080
+  - 18081
+
+learning_objectives:
+  - Create a Gitea repository and push code
+  - Connect Woodpecker CI to Gitea via OAuth
+  - Write a .woodpecker.yml pipeline configuration
+  - Understand pipeline stages: clone, lint, test, build
+  - Trigger pipelines on push events
+  - View pipeline logs and artifacts
+  - Use secrets in Woodpecker CI pipelines
+
+tasks:
+  - id: verify-services
+    description: "Verify Gitea and Woodpecker CI are running"
+    hints:
+      - "Gitea: http://localhost:18080"
+      - "Woodpecker CI: http://localhost:18081"
+      - "Gitea admin: labadmin / labpassword123"
+      - "Register at http://localhost:18080/user/sign_up if admin not configured"
+
+  - id: create-gitea-repo
+    description: "Create a new repository in Gitea via the web UI or API"
+    hints:
+      - "Web UI: http://localhost:18080 > + New Repository"
+      - "Name: lab-pipeline"
+      - "Initialize with README"
+      - "Via API: curl -u labadmin:labpassword123 -X POST http://localhost:18080/api/v1/user/repos -H 'Content-Type: application/json' -d '{\"name\":\"lab-pipeline\",\"description\":\"CI Lab\",\"private\":false,\"auto_init\":true}'"
+
+  - id: clone-and-setup
+    description: "Clone the repository and add a simple Python app with a test"
+    hints:
+      - "git clone http://labadmin:labpassword123@localhost:18080/labadmin/lab-pipeline.git"
+      - "cd lab-pipeline"
+      - "Create app.py: def add(a, b): return a + b"
+      - "Create test_app.py: from app import add; def test_add(): assert add(2, 3) == 5"
+      - "Create requirements.txt: pytest"
+      - "Create Dockerfile"
+
+  - id: write-pipeline
+    description: "Write a .woodpecker.yml pipeline with lint, test, and build stages"
+    hints:
+      - "Create .woodpecker.yml in the repo root"
+      - "Pipeline example:"
+      - "  pipeline:"
+      - "    lint:"
+      - "      image: python:3.11-alpine"
+      - "      commands: [pip install flake8 -q, flake8 app.py]"
+      - "    test:"
+      - "      image: python:3.11-alpine"
+      - "      commands: [pip install pytest -q, pytest test_app.py -v]"
+      - "    build:"
+      - "      image: docker:dind"
+      - "      volumes: [/var/run/docker.sock:/var/run/docker.sock]"
+      - "      commands: [docker build -t lab-pipeline:latest .]"
+
+  - id: enable-in-woodpecker
+    description: "Enable the lab-pipeline repository in Woodpecker CI"
+    hints:
+      - "Login to Woodpecker: http://localhost:18081"
+      - "Use Gitea OAuth login"
+      - "Click 'Repositories' > Enable lab-pipeline"
+      - "Woodpecker will set up a webhook in Gitea automatically"
+
+  - id: trigger-pipeline
+    description: "Push code to trigger the pipeline and watch it run"
+    hints:
+      - "git add . && git commit -m 'feat: add CI pipeline'"
+      - "git push origin main"
+      - "Watch in Woodpecker UI: http://localhost:18081"
+      - "Each stage should show green checkmarks"
+
+  - id: view-logs
+    description: "View the pipeline logs for the test stage in Woodpecker"
+    hints:
+      - "Click on the pipeline run in Woodpecker"
+      - "Click on the 'test' step to see pytest output"
+      - "Logs show real-time output from the CI container"
+
+validation_steps:
+  - "Gitea is accessible at http://localhost:18080"
+  - "Woodpecker CI is accessible at http://localhost:18081"
+  - "lab-pipeline repository exists in Gitea"
+
+grading_rules:
+  - check: "curl -sf http://localhost:18080 2>/dev/null | grep -qi 'gitea\\|sign in\\|explore'"
+    points: 20
+  - check: "curl -sf http://localhost:18081 2>/dev/null | grep -qi 'woodpecker\\|sign in\\|login'"
+    points: 20
+  - check: "curl -sf -u labadmin:labpassword123 http://localhost:18080/api/v1/repos/search 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); repos=[r['name'] for r in d.get('data',[])] ; exit(0 if 'lab-pipeline' in repos else 1)\" 2>/dev/null && echo pass"
+    points: 35
+  - check: "curl -sf http://localhost:18080/api/v1/version 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if d.get('version') else 1)\" 2>/dev/null && echo pass"
+    points: 25
+
+cleanup_steps:
+  - "curl -sf -u labadmin:labpassword123 -X DELETE http://localhost:18080/api/v1/repos/labadmin/lab-pipeline 2>/dev/null || true"
+  - "rm -rf ~/lab-pipeline || true"
+
+related_docs:
+  - "../../../12-cicd/README.md"
+
+related_cloud_services:
+  - "GitHub Actions"
+  - "GitLab CI/CD"
+  - "AWS CodePipeline"
+  - "Azure Pipelines"
+  - "GCP Cloud Build"
+
+local_only: true
+cost_warning: null
+safety_warning: null

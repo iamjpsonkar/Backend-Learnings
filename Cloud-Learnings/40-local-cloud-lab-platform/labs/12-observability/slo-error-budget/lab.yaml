@@ -1,0 +1,110 @@
+id: slo-error-budget
+title: "Observability: SLO Error Budgets and Burn Rate Alerts"
+description: >
+  Move from theory to implementation: define real SLOs in Prometheus, calculate
+  error budgets with PromQL, build burn rate alerts (Google SRE style), and
+  visualize error budget consumption in Grafana. This lab covers the practical
+  implementation of the SLO concepts from the SRE labs.
+
+difficulty: intermediate
+estimated_time: "60 minutes"
+category: observability
+
+prerequisites:
+  - "Observability stack running: make start-observability"
+  - "Core services running: make start-core"
+
+tools_required:
+  - curl
+
+docker_profiles:
+  - observability
+  - core
+
+ports_used:
+  - 9090
+  - 3000
+
+learning_objectives:
+  - Define SLIs and SLOs as Prometheus recording rules
+  - Calculate error budget remaining as a PromQL expression
+  - Implement multi-window burn rate alerts
+  - Build an error budget dashboard in Grafana
+  - Understand the relationship between SLO, error budget, and alert windows
+  - Use Prometheus rule files for SLO definitions
+
+tasks:
+  - id: define-sli
+    description: "Write a Prometheus recording rule for a request success rate SLI"
+    hints:
+      - "SLI = (successful requests) / (total requests)"
+      - "Rule file location: configs/prometheus/rules/"
+      - "Recording rule: sli:request_success_rate:ratio_rate5m"
+      - "expr: sum(rate(prometheus_http_requests_total{code=~'2..'|'3..'}[5m])) / sum(rate(prometheus_http_requests_total[5m]))"
+      - "After adding, reload Prometheus: curl -X POST http://localhost:9090/-/reload"
+
+  - id: error-budget-query
+    description: "Write PromQL to calculate the error budget remaining given a 99.9% SLO over 30 days"
+    hints:
+      - "SLO = 0.999, error_budget_fraction = 1 - SLO = 0.001"
+      - "30-day window in seconds: 30 * 24 * 3600 = 2592000"
+      - "Error budget remaining: 1 - ((1 - sli:request_success_rate:ratio_rate5m) / (1 - 0.999))"
+      - "Or simply: (1 - sli_value) compared to allowed error rate"
+      - "Try: 1 - (sum(rate(prometheus_http_requests_total{code!~'2..'|'3..'}[30d])) / sum(rate(prometheus_http_requests_total[30d])))"
+
+  - id: burn-rate-alert
+    description: "Write a burn rate alert: fire if error budget burns faster than 14.4x in 1h and 6x in 6h"
+    hints:
+      - "Burn rate = actual error rate / allowed error rate (1 - SLO)"
+      - "14.4x burn in 1h = consuming 30-day budget in ~2 days"
+      - "Alert rule: (error_rate_1h / (1 - 0.999)) > 14.4 AND (error_rate_6h / (1 - 0.999)) > 6"
+      - "This is the Google SRE multi-window alert pattern"
+      - "Add to configs/prometheus/rules/lab-alerts.yml"
+
+  - id: grafana-error-budget-panel
+    description: "Build a Grafana panel showing error budget percentage remaining with threshold coloring"
+    hints:
+      - "Panel type: Gauge"
+      - "Query: same as error-budget-query task, return as percentage"
+      - "Thresholds: Green > 50%, Yellow > 10%, Red <= 10%"
+      - "Min: 0, Max: 1 (or use Unit: Percent 0-100)"
+
+  - id: alert-manager-check
+    description: "Verify Prometheus has loaded the alert rules and inspect the alert state"
+    hints:
+      - "Check rules: curl -sf http://localhost:9090/api/v1/rules | python3 -m json.tool | grep -A5 name"
+      - "Check alerts: curl -sf http://localhost:9090/api/v1/alerts"
+      - "Status page: http://localhost:9090/rules"
+
+validation_steps:
+  - "Prometheus is running with rules loaded"
+  - "SLI recording rule is defined"
+  - "Error budget PromQL returns a value between 0 and 1"
+
+grading_rules:
+  - check: "curl -sf http://localhost:9090/-/ready 2>/dev/null | grep -qi ready"
+    points: 15
+  - check: "curl -sf 'http://localhost:9090/api/v1/rules' 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); rules=[r for g in d.get('data',{}).get('groups',[]) for r in g.get('rules',[])] ; exit(0 if rules else 1)\""
+    points: 25
+  - check: "curl -sf 'http://localhost:9090/api/v1/query?query=up' 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if d['status']=='success' else 1)\""
+    points: 25
+  - check: "curl -sf http://localhost:3000/api/health 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if d.get('database')=='ok' else 1)\""
+    points: 20
+  - check: "[ -f configs/prometheus/rules/lab-alerts.yml ] && grep -q 'alert:' configs/prometheus/rules/lab-alerts.yml && echo pass || echo 'alert rules file check'"
+    points: 15
+
+cleanup_steps: []
+
+related_docs:
+  - "../../../15-observability/README.md"
+  - "../../../21-sre/README.md"
+
+related_cloud_services:
+  - "AWS CloudWatch SLOs"
+  - "GCP Cloud Monitoring SLOs"
+  - "Datadog SLOs"
+  - "New Relic SLOs"
+
+local_only: true
+cost_warning: null
+safety_warning: null

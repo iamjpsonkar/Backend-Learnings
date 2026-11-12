@@ -1,0 +1,65 @@
+[
+  {
+    "product_id": "p001",
+    "name": "Laptop Pro 15",
+    "category": "electronics",
+    "price": 1299.99,
+    "stock": 42,
+    "sku": "LAP-PRO-15-SLV",
+    "weight_kg": 1.8
+  },
+  {
+    "product_id": "p002",
+    "name": "Wireless Mouse",
+    "category": "electronics",
+    "price": 29.99,
+    "stock": 250,
+    "sku": "MOU-WL-BLK",
+    "weight_kg": 0.1
+  },
+  {
+    "product_id": "p003",
+    "name": "Standing Desk",
+    "category": "furniture",
+    "price": 599.00,
+    "stock": 15,
+    "sku": "DSK-STAND-OAK",
+    "weight_kg": 45.0
+  },
+  {
+    "product_id": "p004",
+    "name": "Noise-Cancelling Headphones",
+    "category": "electronics",
+    "price": 349.99,
+    "stock": 78,
+    "sku": "HDN-NC-BLK",
+    "weight_kg": 0.3
+  },
+  {
+    "product_id": "p005",
+    "name": "USB-C Hub (7-in-1)",
+    "category": "electronics",
+    "price": 49.99,
+    "stock": 330,
+    "sku": "HUB-USBC-7IN1",
+    "weight_kg": 0.15
+  },
+  {
+    "product_id": "p006",
+    "name": "Ergonomic Chair",
+    "category": "furniture",
+    "price": 449.00,
+    "stock": 8,
+    "sku": "CHR-ERGO-BLK",
+    "weight_kg": 18.0
+  },
+  {
+    "product_id": "p007",
+    "name": "4K Monitor 27\"",
+    "category": "electronics",
+    "price": 799.99,
+    "stock": 23,
+    "sku": "MON-4K-27-BLK",
+    "weight_kg": 6.2
+  }
+]

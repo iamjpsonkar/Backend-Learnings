@@ -1,0 +1,57 @@
+[
+  {
+    "user_id": "u001",
+    "name": "Alice Chen",
+    "email": "alice@example.local",
+    "tier": "premium",
+    "created_at": "2024-01-15T10:00:00Z",
+    "address": {
+      "city": "San Francisco",
+      "country": "US"
+    }
+  },
+  {
+    "user_id": "u002",
+    "name": "Bob Smith",
+    "email": "bob@example.local",
+    "tier": "standard",
+    "created_at": "2024-02-20T14:30:00Z",
+    "address": {
+      "city": "New York",
+      "country": "US"
+    }
+  },
+  {
+    "user_id": "u003",
+    "name": "Carol Tanaka",
+    "email": "carol@example.local",
+    "tier": "premium",
+    "created_at": "2024-03-05T09:15:00Z",
+    "address": {
+      "city": "Tokyo",
+      "country": "JP"
+    }
+  },
+  {
+    "user_id": "u004",
+    "name": "David Okafor",
+    "email": "david@example.local",
+    "tier": "standard",
+    "created_at": "2024-03-18T16:45:00Z",
+    "address": {
+      "city": "Lagos",
+      "country": "NG"
+    }
+  },
+  {
+    "user_id": "u005",
+    "name": "Eva Müller",
+    "email": "eva@example.local",
+    "tier": "enterprise",
+    "created_at": "2024-04-01T11:20:00Z",
+    "address": {
+      "city": "Berlin",
+      "country": "DE"
+    }
+  }
+]

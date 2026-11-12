@@ -1,0 +1,105 @@
+---
+# Homepage services configuration
+# All URLs use localhost for browser access
+
+- Core:
+    - Traefik:
+        href: http://localhost:8080/dashboard/
+        description: Reverse proxy dashboard
+        icon: traefik.svg
+
+- Observability:
+    - Grafana:
+        href: http://localhost:3001
+        description: Dashboards (admin/admin)
+        icon: grafana.svg
+    - Prometheus:
+        href: http://localhost:9090
+        description: Metrics
+        icon: prometheus.svg
+    - Loki:
+        href: http://localhost:3100
+        description: Logs
+        icon: loki.svg
+    - Tempo:
+        href: http://localhost:3200
+        description: Traces
+        icon: tempo.svg
+
+- Cloud Emulators:
+    - LocalStack:
+        href: http://localhost:4566/_localstack/health
+        description: AWS emulator
+        icon: aws.svg
+    - MinIO Console:
+        href: http://localhost:9002
+        description: S3-compatible storage (minioadmin/minioadmin123)
+        icon: minio.svg
+    - Azurite:
+        href: http://localhost:10000
+        description: Azure storage emulator
+        icon: azure.svg
+    - GCP Pub/Sub:
+        href: http://localhost:8085
+        description: GCP Pub/Sub emulator
+        icon: gcp.svg
+
+- Data:
+    - Adminer:
+        href: http://localhost:8081
+        description: Database UI (postgres/mysql/mongo)
+        icon: adminer.svg
+    - Redis Commander:
+        href: http://localhost:8082
+        description: Redis UI
+        icon: redis.svg
+
+- Messaging:
+    - RabbitMQ:
+        href: http://localhost:15672
+        description: RabbitMQ management (admin/adminpassword123)
+        icon: rabbitmq.svg
+    - Redpanda Console:
+        href: http://localhost:8083
+        description: Kafka-compatible streaming UI
+        icon: kafka.svg
+
+- Security:
+    - Vault:
+        href: http://localhost:8200
+        description: Secrets management (token: dev-root-token)
+        icon: vault.svg
+    - Keycloak:
+        href: http://localhost:8180/admin
+        description: Identity provider (admin/adminpassword123)
+        icon: keycloak.svg
+
+- CI/CD:
+    - Gitea:
+        href: http://localhost:3002
+        description: Git hosting (gitadmin/gitpassword123)
+        icon: gitea.svg
+    - Jenkins:
+        href: http://localhost:8090
+        description: CI automation
+        icon: jenkins.svg
+    - Registry:
+        href: http://localhost:5000/v2/_catalog
+        description: Local Docker registry
+        icon: docker.svg
+
+- Sample Apps:
+    - Sample API:
+        href: http://localhost:8000/health
+        description: FastAPI sample application
+        icon: fastapi.svg
+    - Sample Frontend:
+        href: http://localhost:8100
+        description: Static frontend app
+        icon: nginx.svg
+
+- Management:
+    - Portainer:
+        href: http://localhost:9000
+        description: Docker UI (opt-in)
+        icon: portainer.svg

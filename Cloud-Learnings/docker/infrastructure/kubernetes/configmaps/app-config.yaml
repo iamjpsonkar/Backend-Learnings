@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: default
+  labels:
+    project: cloud-learnings-lab
+data:
+  APP_ENV: "lab"
+  LOG_LEVEL: "INFO"
+  DATABASE_HOST: "postgres"
+  DATABASE_PORT: "5432"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  # Multi-line config file example
+  nginx.conf: |
+    server {
+      listen 80;
+      location /health {
+        return 200 "ok";
+      }
+    }

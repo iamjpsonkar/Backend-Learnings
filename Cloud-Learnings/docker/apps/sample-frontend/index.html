@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud-Learnings Sample App</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        header {
+            background: #1e293b;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 { color: #38bdf8; font-size: 1.25rem; }
+        .badge {
+            background: #065f46;
+            color: #6ee7b7;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+        }
+        main { max-width: 1100px; margin: 2rem auto; padding: 0 1.5rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; }
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+        }
+        .card h2 { font-size: 1rem; color: #94a3b8; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .status { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot.green { background: #22c55e; }
+        .dot.red { background: #ef4444; }
+        .dot.yellow { background: #f59e0b; }
+        .items-list { list-style: none; }
+        .items-list li {
+            padding: 0.5rem;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+        }
+        .items-list li:last-child { border-bottom: none; }
+        .price { color: #38bdf8; }
+        .btn {
+            background: #0284c7;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            margin-top: 0.75rem;
+            font-size: 0.875rem;
+        }
+        .btn:hover { background: #0369a1; }
+        .log-box {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            font-family: monospace;
+            font-size: 0.75rem;
+            height: 120px;
+            overflow-y: auto;
+            white-space: pre;
+            color: #94a3b8;
+        }
+        .links { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+        .link-btn {
+            background: #1e293b;
+            border: 1px solid #475569;
+            color: #38bdf8;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            text-decoration: none;
+            font-size: 0.75rem;
+        }
+        .link-btn:hover { border-color: #38bdf8; }
+        footer { text-align: center; padding: 2rem; color: #475569; font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Cloud-Learnings Lab Platform</h1>
+        <span class="badge">local dev</span>
+    </header>
+
+    <main>
+        <div class="grid">
+            <!-- Health Status -->
+            <div class="card">
+                <h2>API Health</h2>
+                <div id="health-status">
+                    <div class="status"><div class="dot yellow"></div> Checking...</div>
+                </div>
+                <button class="btn" onclick="checkHealth()">Refresh</button>
+            </div>
+
+            <!-- Items -->
+            <div class="card">
+                <h2>Items (from PostgreSQL)</h2>
+                <ul class="items-list" id="items-list">
+                    <li>Loading...</li>
+                </ul>
+                <button class="btn" onclick="loadItems()">Reload</button>
+            </div>
+
+            <!-- Cache Demo -->
+            <div class="card">
+                <h2>Redis Cache</h2>
+                <div id="cache-result">Click to test Redis cache</div>
+                <button class="btn" onclick="testCache()">Test Cache</button>
+            </div>
+
+            <!-- Tracing Demo -->
+            <div class="card">
+                <h2>Distributed Trace</h2>
+                <div id="trace-result">Click to generate a trace in Tempo</div>
+                <button class="btn" onclick="demoTrace()">Generate Trace</button>
+            </div>
+
+            <!-- Platform Links -->
+            <div class="card">
+                <h2>Platform Links</h2>
+                <div class="links">
+                    <a class="link-btn" href="http://localhost:3001" target="_blank">Grafana</a>
+                    <a class="link-btn" href="http://localhost:9090" target="_blank">Prometheus</a>
+                    <a class="link-btn" href="http://localhost:3100" target="_blank">Loki</a>
+                    <a class="link-btn" href="http://localhost:3200" target="_blank">Tempo</a>
+                    <a class="link-btn" href="http://localhost:8200" target="_blank">Vault</a>
+                    <a class="link-btn" href="http://localhost:8180" target="_blank">Keycloak</a>
+                    <a class="link-btn" href="http://localhost:4566" target="_blank">LocalStack</a>
+                    <a class="link-btn" href="http://localhost:9002" target="_blank">MinIO</a>
+                    <a class="link-btn" href="http://localhost:15672" target="_blank">RabbitMQ</a>
+                    <a class="link-btn" href="http://localhost:8083" target="_blank">Redpanda</a>
+                    <a class="link-btn" href="http://localhost:8081" target="_blank">Adminer</a>
+                    <a class="link-btn" href="http://localhost:3002" target="_blank">Gitea</a>
+                    <a class="link-btn" href="http://localhost:8090" target="_blank">Jenkins</a>
+                    <a class="link-btn" href="http://localhost:8080/dashboard/" target="_blank">Traefik</a>
+                </div>
+            </div>
+
+            <!-- API Log -->
+            <div class="card">
+                <h2>API Activity Log</h2>
+                <div class="log-box" id="log-box">Waiting for events...\n</div>
+            </div>
+        </div>
+    </main>
+
+    <footer>Cloud-Learnings Lab Platform &bull; All credentials are fake &bull; Local-only</footer>
+
+    <script>
+        const API = '/api';
+        const logs = document.getElementById('log-box');
+
+        function appendLog(msg) {
+            logs.textContent += new Date().toISOString().split('T')[1].slice(0,8) + ' ' + msg + '\n';
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        async function checkHealth() {
+            try {
+                const res = await fetch(API + '/v1/../health');
+                const data = await res.json();
+                const statusEl = document.getElementById('health-status');
+                const color = data.status === 'healthy' ? 'green' : 'yellow';
+                statusEl.innerHTML = `
+                    <div class="status"><div class="dot ${color}"></div> ${data.status}</div>
+                    <small style="color:#64748b">DB: ${data.dependencies.postgres} | Redis: ${data.dependencies.redis}</small>
+                `;
+                appendLog('GET /health → ' + data.status);
+            } catch(e) {
+                document.getElementById('health-status').innerHTML =
+                    '<div class="status"><div class="dot red"></div> API unreachable</div>';
+                appendLog('GET /health → ERROR: ' + e.message);
+            }
+        }
+
+        async function loadItems() {
+            try {
+                const res = await fetch(API + '/v1/items?limit=5');
+                const data = await res.json();
+                const list = document.getElementById('items-list');
+                if (data.items && data.items.length > 0) {
+                    list.innerHTML = data.items.map(i =>
+                        `<li><span>${i.name}</span><span class="price">$${Number(i.price || 0).toFixed(2)}</span></li>`
+                    ).join('');
+                } else {
+                    list.innerHTML = '<li>No items found</li>';
+                }
+                appendLog('GET /api/v1/items → ' + (data.items?.length || 0) + ' items');
+            } catch(e) {
+                document.getElementById('items-list').innerHTML = '<li>Error loading items</li>';
+                appendLog('GET /api/v1/items → ERROR: ' + e.message);
+            }
+        }
+
+        async function testCache() {
+            const key = 'frontend-test-' + Date.now();
+            try {
+                const res = await fetch(API + '/v1/cache/' + key);
+                const data = await res.json();
+                document.getElementById('cache-result').textContent =
+                    `Key: ${data.key}\nValue: ${data.value || 'null'}\nCache hit: ${data.cache_hit}`;
+                appendLog('GET /api/v1/cache/' + key + ' → hit=' + data.cache_hit);
+            } catch(e) {
+                document.getElementById('cache-result').textContent = 'Error: ' + e.message;
+                appendLog('GET /api/v1/cache → ERROR: ' + e.message);
+            }
+        }
+
+        async function demoTrace() {
+            try {
+                const res = await fetch(API + '/v1/trace');
+                const data = await res.json();
+                document.getElementById('trace-result').textContent =
+                    data.message + '\nRequest ID: ' + data.request_id;
+                appendLog('GET /api/v1/trace → ' + data.request_id);
+            } catch(e) {
+                document.getElementById('trace-result').textContent = 'Error: ' + e.message;
+                appendLog('GET /api/v1/trace → ERROR: ' + e.message);
+            }
+        }
+
+        // Load on page load
+        checkHealth();
+        loadItems();
+    </script>
+</body>
+</html>

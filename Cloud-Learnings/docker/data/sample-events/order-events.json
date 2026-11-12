@@ -1,0 +1,63 @@
+[
+  {
+    "event_id": "evt-001",
+    "type": "order.created",
+    "timestamp": "2024-01-01T10:00:00Z",
+    "payload": {
+      "orderId": "ORD-001",
+      "userId": "USR-alice",
+      "amount": 99.99,
+      "currency": "USD",
+      "items": [
+        {"sku": "WGT-001", "qty": 2, "price": 19.99},
+        {"sku": "GDG-001", "qty": 1, "price": 60.01}
+      ]
+    }
+  },
+  {
+    "event_id": "evt-002",
+    "type": "order.payment_received",
+    "timestamp": "2024-01-01T10:00:05Z",
+    "payload": {
+      "orderId": "ORD-001",
+      "paymentId": "PAY-001",
+      "method": "card",
+      "amount": 99.99
+    }
+  },
+  {
+    "event_id": "evt-003",
+    "type": "order.shipped",
+    "timestamp": "2024-01-01T14:30:00Z",
+    "payload": {
+      "orderId": "ORD-001",
+      "trackingId": "TRK-12345",
+      "carrier": "FedEx",
+      "estimatedDelivery": "2024-01-03"
+    }
+  },
+  {
+    "event_id": "evt-004",
+    "type": "order.created",
+    "timestamp": "2024-01-01T11:00:00Z",
+    "payload": {
+      "orderId": "ORD-002",
+      "userId": "USR-bob",
+      "amount": 14.99,
+      "currency": "USD",
+      "items": [
+        {"sku": "WGT-001", "qty": 1, "price": 14.99}
+      ]
+    }
+  },
+  {
+    "event_id": "evt-005",
+    "type": "order.payment_failed",
+    "timestamp": "2024-01-01T11:00:10Z",
+    "payload": {
+      "orderId": "ORD-002",
+      "reason": "insufficient_funds",
+      "retryAfter": "2024-01-02T00:00:00Z"
+    }
+  }
+]

@@ -1,0 +1,9 @@
+workflow-aggregator
+git
+docker-workflow
+pipeline-stage-view
+blueocean
+credentials-binding
+ansicolor
+timestamper
+ws-cleanup

@@ -1,0 +1,97 @@
+# docker-compose.security.yml — Security services
+# Vault (dev mode), Keycloak
+# ~1 GB RAM
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.security.yml \
+#     --profile core --profile security up -d
+
+name: local-cloud-lab
+
+networks:
+  cloud-lab-network:
+    external: true
+
+volumes:
+  keycloak-data:
+    name: cloud-lab-keycloak-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+
+services:
+
+  # ─────────────────────────────────────────────
+  # Vault — Secrets management (dev mode, auto-unsealed)
+  # http://localhost:8200
+  # Root token: dev-root-token (set in .env)
+  # WARNING: dev mode — all data is in-memory, lost on restart
+  # ─────────────────────────────────────────────
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: cloud-lab-vault
+    profiles: [security]
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID:-dev-root-token}
+      VAULT_DEV_LISTEN_ADDRESS: ${VAULT_DEV_LISTEN_ADDRESS:-0.0.0.0:8200}
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "${VAULT_PORT:-8200}:8200"
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: vault
+      traefik.enable: "true"
+      traefik.http.routers.vault.rule: "Host(`vault.localhost`)"
+      traefik.http.services.vault.loadbalancer.server.port: "8200"
+    healthcheck:
+      test:
+        - "CMD"
+        - "sh"
+        - "-c"
+        - "VAULT_ADDR=http://localhost:8200 vault status | grep -q 'Sealed.*false'"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Keycloak — Identity and access management (IAM)
+  # http://localhost:8888
+  # Admin login: admin / adminpassword123
+  # ─────────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: cloud-lab-keycloak
+    profiles: [security]
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-adminpassword123}
+      KC_HTTP_PORT: 8080
+      KC_PROXY: edge
+      KC_DB: dev-file
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_PORT:-8888}:8080"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+      - ./configs/keycloak/realm-lab.json:/opt/keycloak/data/import/realm-lab.json:ro
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: keycloak
+      traefik.enable: "true"
+      traefik.http.routers.keycloak.rule: "Host(`keycloak.localhost`)"
+      traefik.http.services.keycloak.loadbalancer.server.port: "8080"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health/ready"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+    restart: unless-stopped

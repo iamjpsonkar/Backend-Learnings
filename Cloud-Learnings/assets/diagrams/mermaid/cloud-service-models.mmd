@@ -1,0 +1,68 @@
+%%{init: {"theme": "neutral", "themeVariables": {"fontSize": "16px"}}}%%
+graph TD
+    subgraph OnPrem["On-Premises (You manage everything)"]
+        OP_HW[Hardware]
+        OP_NET[Networking]
+        OP_OS[Operating System]
+        OP_RT[Runtime]
+        OP_MW[Middleware]
+        OP_DATA[Data]
+        OP_APP[Application]
+    end
+
+    subgraph IaaS["IaaS — Infrastructure as a Service\n(e.g. EC2, Azure VM, GCE)"]
+        direction TB
+        I_HW[Hardware ✓ Provider]
+        I_NET[Networking ✓ Provider]
+        I_OS[Operating System ← You]
+        I_RT[Runtime ← You]
+        I_MW[Middleware ← You]
+        I_DATA[Data ← You]
+        I_APP[Application ← You]
+    end
+
+    subgraph PaaS["PaaS — Platform as a Service\n(e.g. Elastic Beanstalk, App Service, Heroku)"]
+        direction TB
+        P_HW[Hardware ✓ Provider]
+        P_NET[Networking ✓ Provider]
+        P_OS[Operating System ✓ Provider]
+        P_RT[Runtime ✓ Provider]
+        P_MW[Middleware ✓ Provider]
+        P_DATA[Data ← You]
+        P_APP[Application ← You]
+    end
+
+    subgraph SaaS["SaaS — Software as a Service\n(e.g. Gmail, Salesforce, GitHub)"]
+        direction TB
+        S_HW[Hardware ✓ Provider]
+        S_NET[Networking ✓ Provider]
+        S_OS[Operating System ✓ Provider]
+        S_RT[Runtime ✓ Provider]
+        S_MW[Middleware ✓ Provider]
+        S_DATA[Data ✓ Provider]
+        S_APP[Application ✓ Provider]
+    end
+
+    subgraph FaaS["FaaS — Function as a Service\n(e.g. AWS Lambda, Azure Functions, Cloud Run)"]
+        direction TB
+        F_HW[Hardware ✓ Provider]
+        F_NET[Networking ✓ Provider]
+        F_OS[Operating System ✓ Provider]
+        F_RT[Runtime ✓ Provider]
+        F_MW[Scaling / Infra ✓ Provider]
+        F_CODE[Function Code ← You]
+        F_TRIG[Trigger / Event ← You]
+    end
+
+    classDef provider fill:#d4edda,stroke:#28a745,color:#155724
+    classDef user fill:#cce5ff,stroke:#004085,color:#004085
+    classDef header fill:#f8f9fa,stroke:#6c757d,color:#343a40
+
+    class OP_HW,OP_NET,OP_OS,OP_RT,OP_MW,OP_DATA,OP_APP user
+    class I_HW,I_NET provider
+    class I_OS,I_RT,I_MW,I_DATA,I_APP user
+    class P_HW,P_NET,P_OS,P_RT,P_MW provider
+    class P_DATA,P_APP user
+    class S_HW,S_NET,S_OS,S_RT,S_MW,S_DATA,S_APP provider
+    class F_HW,F_NET,F_OS,F_RT,F_MW provider
+    class F_CODE,F_TRIG user

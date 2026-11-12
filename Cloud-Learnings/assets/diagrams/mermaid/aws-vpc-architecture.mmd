@@ -1,0 +1,78 @@
+%%{init: {"theme": "neutral", "themeVariables": {"fontSize": "15px"}}}%%
+graph TD
+    Internet([Internet]) --> IGW
+
+    subgraph AWS_Account["AWS Account"]
+        subgraph Region["Region: us-east-1"]
+            IGW[Internet Gateway]
+
+            subgraph VPC["VPC  10.0.0.0/16"]
+
+                subgraph AZ1["Availability Zone A"]
+                    PubA["Public Subnet\n10.0.1.0/24"]
+                    PrivA["Private Subnet\n10.0.2.0/24"]
+                    NATGW_A["NAT Gateway"]
+                end
+
+                subgraph AZ2["Availability Zone B"]
+                    PubB["Public Subnet\n10.0.3.0/24"]
+                    PrivB["Private Subnet\n10.0.4.0/24"]
+                end
+
+                subgraph Compute["Compute"]
+                    ALB["Application Load Balancer\n(Public Subnets)"]
+                    EC2_A["EC2 Instance\n(Private Subnet A)"]
+                    EC2_B["EC2 Instance\n(Private Subnet B)"]
+                end
+
+                subgraph Data["Data Layer"]
+                    RDS_Primary["RDS Primary\n(Private Subnet A)"]
+                    RDS_Standby["RDS Standby\n(Private Subnet B)"]
+                end
+
+                RT_Pub["Public Route Table\n0.0.0.0/0 → IGW"]
+                RT_Priv["Private Route Table\n0.0.0.0/0 → NAT GW"]
+
+                SG_ALB["Security Group: ALB\n443 inbound from 0.0.0.0/0"]
+                SG_EC2["Security Group: EC2\n8080 inbound from ALB SG only"]
+                SG_RDS["Security Group: RDS\n5432 inbound from EC2 SG only"]
+            end
+        end
+    end
+
+    IGW --> PubA
+    IGW --> PubB
+    PubA --> NATGW_A
+    NATGW_A --> PrivA
+    PrivA --> PrivB
+
+    PubA --> ALB
+    PubB --> ALB
+    ALB --> EC2_A
+    ALB --> EC2_B
+
+    EC2_A --> RDS_Primary
+    EC2_B --> RDS_Primary
+    RDS_Primary -.->|"Sync replication"| RDS_Standby
+
+    RT_Pub -.-> PubA
+    RT_Pub -.-> PubB
+    RT_Priv -.-> PrivA
+    RT_Priv -.-> PrivB
+
+    SG_ALB -.-> ALB
+    SG_EC2 -.-> EC2_A
+    SG_EC2 -.-> EC2_B
+    SG_RDS -.-> RDS_Primary
+
+    classDef public fill:#fff3cd,stroke:#856404,color:#333
+    classDef private fill:#cce5ff,stroke:#004085,color:#333
+    classDef data fill:#f8d7da,stroke:#721c24,color:#333
+    classDef gateway fill:#d4edda,stroke:#155724,color:#333
+    classDef sg fill:#e2e3e5,stroke:#383d41,color:#333,stroke-dasharray:4
+
+    class PubA,PubB,ALB public
+    class PrivA,PrivB,EC2_A,EC2_B private
+    class RDS_Primary,RDS_Standby data
+    class IGW,NATGW_A gateway
+    class SG_ALB,SG_EC2,SG_RDS,RT_Pub,RT_Priv sg

@@ -1,0 +1,127 @@
+id: vault-secrets-injection
+title: "Vault: Dynamic Secrets and Application Integration"
+description: >
+  Go beyond static secrets: learn Vault's dynamic secrets for PostgreSQL,
+  token policies, AppRole authentication, and environment variable injection.
+  Dynamic secrets create short-lived, auto-expiring credentials — a fundamental
+  security improvement over static passwords. Vault and PostgreSQL are both
+  running locally.
+
+difficulty: intermediate
+estimated_time: "60 minutes"
+category: security
+
+prerequisites:
+  - "Security stack running: make start-security"
+  - "Data stack running: make start-data (PostgreSQL needed)"
+  - "Vault CLI: brew install vault"
+
+tools_required:
+  - vault
+  - curl
+  - psql
+
+docker_profiles:
+  - security
+  - data
+
+ports_used:
+  - 8200
+  - 5432
+
+learning_objectives:
+  - Enable and configure Vault's database secrets engine
+  - Generate dynamic PostgreSQL credentials that auto-expire
+  - Create Vault policies and AppRole authentication
+  - Use Vault agent for automatic secret injection
+  - Revoke secrets and understand the benefits of short-lived credentials
+  - Use Vault's token hierarchy and TTL concepts
+
+tasks:
+  - id: verify-vault
+    description: "Verify Vault is running, unsealed, and initialized"
+    hints:
+      - "export VAULT_ADDR=http://localhost:8200"
+      - "export VAULT_TOKEN=dev-root-token"
+      - "vault status"
+      - "vault kv list secret/ (should show lab secrets)"
+
+  - id: enable-database-engine
+    description: "Enable the Vault database secrets engine"
+    hints:
+      - "vault secrets enable database"
+      - "List enabled engines: vault secrets list"
+      - "The database engine allows Vault to manage DB credentials dynamically"
+
+  - id: configure-postgres-connection
+    description: "Configure Vault to connect to the local PostgreSQL instance"
+    hints:
+      - "vault write database/config/lab-postgres plugin_name=postgresql-database-plugin allowed_roles='lab-role' connection_url='postgresql://{{username}}:{{password}}@postgres:5432/labdb?sslmode=disable' username='labuser' password='labpassword123'"
+      - "Note: hostname is 'postgres' (Docker service name) when running from within Docker network"
+      - "From host: change to localhost:5432"
+      - "Rotate root credentials: vault write -force database/config/lab-postgres/rotate-root"
+
+  - id: create-role
+    description: "Create a Vault role that generates short-lived PostgreSQL credentials (TTL 1 minute)"
+    hints:
+      - "vault write database/roles/lab-role db_name=lab-postgres creation_statements=\"CREATE ROLE \\\"{{name}}\\\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT SELECT ON ALL TABLES IN SCHEMA public TO \\\"{{name}}\\\";\" default_ttl=1m max_ttl=5m"
+      - "Generate credentials: vault read database/creds/lab-role"
+      - "Each read generates a NEW unique credential"
+
+  - id: dynamic-credentials
+    description: "Generate dynamic credentials and connect to PostgreSQL, then watch them expire"
+    hints:
+      - "CREDS=$(vault read -format=json database/creds/lab-role)"
+      - "USERNAME=$(echo $CREDS | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d[\"data\"][\"username\"])')"
+      - "PASSWORD=$(echo $CREDS | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d[\"data\"][\"password\"])')"
+      - "PGPASSWORD=$PASSWORD psql -h localhost -p 5432 -U $USERNAME -d labdb -c 'SELECT current_user;'"
+      - "Wait 1 minute — credentials should expire and the connection fail"
+
+  - id: approle-auth
+    description: "Configure AppRole authentication for machine-to-machine access"
+    hints:
+      - "Enable: vault auth enable approle"
+      - "Create policy: vault policy write lab-policy - <<EOF\\npath \\\"database/creds/lab-role\\\" { capabilities = [\\\"read\\\"] }\\nEOF"
+      - "Create role: vault write auth/approle/role/lab-app policies=lab-policy token_ttl=1h"
+      - "Get RoleID: vault read auth/approle/role/lab-app/role-id"
+      - "Get SecretID: vault write -f auth/approle/role/lab-app/secret-id"
+      - "Login: vault write auth/approle/login role_id=<RoleID> secret_id=<SecretID>"
+
+  - id: revoke-credentials
+    description: "Manually revoke a credential lease and verify the DB user is removed"
+    hints:
+      - "Get lease ID from vault read: vault read -format=json database/creds/lab-role | python3 -c 'import sys,json; print(json.load(sys.stdin)[\"lease_id\"])'"
+      - "Revoke: vault lease revoke <lease_id>"
+      - "Verify user gone: PGPASSWORD=labpassword123 psql -h localhost -U labuser -d labdb -c '\\du'"
+
+validation_steps:
+  - "Vault is running at http://localhost:8200"
+  - "Database secrets engine is enabled"
+  - "lab-role generates valid PostgreSQL credentials"
+
+grading_rules:
+  - check: "VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=dev-root-token vault status 2>/dev/null | grep -qi 'initialized.*true\\|Sealed.*false'"
+    points: 20
+  - check: "VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=dev-root-token vault secrets list 2>/dev/null | grep -q database"
+    points: 30
+  - check: "VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=dev-root-token vault read database/creds/lab-role 2>/dev/null | grep -q username"
+    points: 30
+  - check: "VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=dev-root-token vault auth list 2>/dev/null | grep -q approle"
+    points: 20
+
+cleanup_steps:
+  - "VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=dev-root-token vault secrets disable database 2>/dev/null || true"
+  - "VAULT_ADDR=http://localhost:8200 VAULT_TOKEN=dev-root-token vault auth disable approle 2>/dev/null || true"
+
+related_docs:
+  - "../../../17-security/README.md"
+
+related_cloud_services:
+  - "AWS Secrets Manager"
+  - "Azure Key Vault"
+  - "GCP Secret Manager"
+  - "HashiCorp Vault Cloud"
+
+local_only: true
+cost_warning: null
+safety_warning: null

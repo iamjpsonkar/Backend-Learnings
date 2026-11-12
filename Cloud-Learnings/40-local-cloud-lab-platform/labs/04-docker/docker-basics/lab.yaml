@@ -1,0 +1,107 @@
+id: docker-basics
+title: "Docker Basics: Run, Build, and Inspect Containers"
+description: >
+  Learn Docker fundamentals by running containers, inspecting them, working with images,
+  understanding container lifecycle, and using basic Docker CLI commands.
+  All practice is local — no registry account needed.
+
+difficulty: beginner
+estimated_time: "45 minutes"
+category: docker
+
+prerequisites:
+  - "Docker installed and running (make doctor)"
+  - "Basic Linux command line knowledge"
+
+tools_required:
+  - docker
+
+docker_profiles:
+  - core
+
+ports_used: []
+
+learning_objectives:
+  - Run and stop containers with docker run, docker stop, docker rm
+  - Pull images and understand image layers
+  - Inspect containers with docker inspect and docker logs
+  - Use docker exec to enter a running container
+  - Understand the difference between images and containers
+  - Use docker ps to list containers
+
+tasks:
+  - id: pull-image
+    description: "Pull the nginx:alpine image using docker pull"
+    hints:
+      - "Command: docker pull nginx:alpine"
+      - "Alpine-based images are minimal (~7 MB)"
+
+  - id: run-container
+    description: "Run an nginx container named 'lab-nginx' on port 8090"
+    hints:
+      - "Command: docker run -d --name lab-nginx -p 8090:80 nginx:alpine"
+      - "The -d flag runs it in detached (background) mode"
+      - "Verify it's running: docker ps"
+
+  - id: check-nginx
+    description: "Confirm nginx is serving at http://localhost:8090"
+    hints:
+      - "Command: curl http://localhost:8090"
+      - "You should see the nginx welcome page HTML"
+
+  - id: view-logs
+    description: "View the nginx container logs"
+    hints:
+      - "Command: docker logs lab-nginx"
+      - "To follow logs in real-time: docker logs -f lab-nginx"
+
+  - id: exec-into-container
+    description: "Run a command inside the running container: check the nginx version"
+    hints:
+      - "Command: docker exec lab-nginx nginx -v"
+      - "Or open a shell: docker exec -it lab-nginx sh"
+
+  - id: inspect-container
+    description: "Inspect the container and find its IP address on the Docker network"
+    hints:
+      - "Command: docker inspect lab-nginx | grep IPAddress"
+      - "Or use format: docker inspect --format='{{.NetworkSettings.IPAddress}}' lab-nginx"
+
+  - id: stop-and-remove
+    description: "Stop the lab-nginx container and remove it"
+    hints:
+      - "Stop: docker stop lab-nginx"
+      - "Remove: docker rm lab-nginx"
+      - "Or combine: docker rm -f lab-nginx"
+
+validation_steps:
+  - "docker image inspect nginx:alpine exits 0"
+  - "docker ps shows no lab-nginx container (stopped and removed)"
+  - "You can describe what docker run -d -p 8090:80 does"
+
+grading_rules:
+  - check: "docker image inspect nginx:alpine"
+    points: 15
+  - check: "! docker ps -a --filter name=lab-nginx --filter status=running | grep -q lab-nginx"
+    points: 10
+  - check: "docker images | grep -q nginx"
+    points: 10
+  - check: "docker ps -a | grep -v lab-nginx | grep -q -v 'lab-nginx'"
+    points: 15
+
+cleanup_steps:
+  - "docker stop lab-nginx 2>/dev/null || true"
+  - "docker rm lab-nginx 2>/dev/null || true"
+  - "docker rmi nginx:alpine 2>/dev/null || true"
+
+related_docs:
+  - "../../../09-containers/README.md"
+
+related_cloud_services:
+  - "AWS ECS (Elastic Container Service)"
+  - "Azure Container Instances"
+  - "Google Cloud Run"
+
+local_only: true
+cost_warning: null
+safety_warning: null

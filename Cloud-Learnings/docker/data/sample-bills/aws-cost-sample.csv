@@ -1,0 +1,16 @@
+LinkedAccountId,LinkedAccountName,ServiceName,Region,UsageType,UsageQuantity,Cost,BillingPeriodStartDate,ResourceTags/user:project,ResourceTags/user:environment
+000000000001,team-alpha,Amazon EC2,us-east-1,BoxUsage:t3.medium,720,52.56,2024-01-01,platform-api,production
+000000000001,team-alpha,Amazon EC2,us-east-1,BoxUsage:t3.medium,720,52.56,2024-01-01,platform-api,production
+000000000001,team-alpha,Amazon EC2,us-east-1,BoxUsage:t3.large,720,105.12,2024-01-01,data-pipeline,production
+000000000001,team-alpha,Amazon S3,us-east-1,TimedStorage-ByteHrs,500000,11.50,2024-01-01,platform-api,production
+000000000001,team-alpha,Amazon RDS,us-east-1,InstanceUsage:db.t3.medium,720,52.56,2024-01-01,platform-api,production
+000000000001,team-alpha,Amazon CloudFront,us-east-1,DataTransfer-Out-Bytes,100000000,9.00,2024-01-01,platform-api,production
+000000000001,team-alpha,Amazon EC2,us-east-1,BoxUsage:t3.micro,720,8.76,2024-01-01,dev-tools,development
+000000000001,team-alpha,Amazon EC2,us-east-1,BoxUsage:t3.micro,0,0.00,2024-01-01,unused-server,development
+000000000002,team-beta,Amazon EC2,eu-west-1,BoxUsage:m5.xlarge,720,175.20,2024-01-01,analytics,production
+000000000002,team-beta,Amazon Redshift,eu-west-1,Node:dc2.large,720,180.00,2024-01-01,analytics,production
+000000000002,team-beta,Amazon S3,eu-west-1,TimedStorage-ByteHrs,2000000,46.00,2024-01-01,data-lake,production
+000000000002,team-beta,Amazon EC2,eu-west-1,BoxUsage:t3.medium,720,52.56,2024-01-01,,
+000000000003,team-gamma,AWS Lambda,us-west-2,Lambda-GB-Second,1000000,1.67,2024-01-01,serverless-api,staging
+000000000003,team-gamma,Amazon SQS,us-west-2,SQS-Messages,5000000,2.00,2024-01-01,serverless-api,staging
+000000000003,team-gamma,Amazon DynamoDB,us-west-2,WriteCapacityUnit-Hrs,720,14.40,2024-01-01,serverless-api,staging

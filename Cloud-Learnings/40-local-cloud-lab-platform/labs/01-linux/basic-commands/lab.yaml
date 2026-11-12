@@ -1,0 +1,122 @@
+id: linux-basic-commands
+title: "Linux: Essential Command Line Operations"
+description: >
+  Master the foundational Linux commands every DevOps/SRE engineer uses daily.
+  Practice file operations, text processing, process management, permissions,
+  and shell pipelines — all inside a running Docker container.
+
+difficulty: beginner
+estimated_time: "45 minutes"
+category: linux
+
+prerequisites:
+  - "Core services running: make start-core"
+  - "Docker installed and running"
+
+tools_required:
+  - docker
+
+docker_profiles:
+  - core
+
+ports_used: []
+
+learning_objectives:
+  - Navigate the filesystem with ls, cd, pwd, find
+  - Read and manipulate files with cat, less, head, tail, grep, awk, sed
+  - Manage processes with ps, top, kill, jobs
+  - Understand and modify file permissions with chmod, chown
+  - Chain commands with pipes and redirects
+  - Use environment variables and shell expansions
+
+tasks:
+  - id: spawn-container
+    description: "Start an interactive Alpine Linux container to practice in"
+    hints:
+      - "docker run -it --rm alpine:3.19 sh"
+      - "Alpine uses 'sh' not 'bash' by default; install bash with: apk add bash"
+      - "The --rm flag removes the container when you exit"
+
+  - id: filesystem-navigation
+    description: "Navigate the filesystem: find all files larger than 10KB under /etc"
+    hints:
+      - "find /etc -type f -size +10k"
+      - "Add -ls to see sizes: find /etc -type f -size +10k -ls"
+      - "Sort by size: find /etc -type f -size +10k -exec ls -lh {} +"
+
+  - id: text-processing
+    description: "Count the number of lines, words, and unique entries in /etc/passwd"
+    hints:
+      - "Line count: wc -l /etc/passwd"
+      - "Unique shells used: awk -F: '{print $7}' /etc/passwd | sort -u"
+      - "Count users per shell: awk -F: '{print $7}' /etc/passwd | sort | uniq -c"
+
+  - id: grep-pipelines
+    description: "Use grep to find all lines in /etc/passwd that contain 'root', then extract just the home directory field"
+    hints:
+      - "grep root /etc/passwd"
+      - "Extract field 6 (home dir): grep root /etc/passwd | cut -d: -f6"
+      - "Or with awk: grep root /etc/passwd | awk -F: '{print $6}'"
+
+  - id: file-operations
+    description: "Create a directory structure, write files, copy, move, and delete them"
+    hints:
+      - "mkdir -p /tmp/lab/{docs,scripts,logs}"
+      - "Write a file: echo 'hello world' > /tmp/lab/docs/hello.txt"
+      - "Copy recursively: cp -r /tmp/lab/docs /tmp/lab/docs-backup"
+
+  - id: permissions
+    description: "Create a script file, make it executable, then restrict it to owner-only read"
+    hints:
+      - "echo '#!/bin/sh\\necho hello' > /tmp/lab/scripts/test.sh"
+      - "Make executable: chmod +x /tmp/lab/scripts/test.sh"
+      - "Owner-only: chmod 700 /tmp/lab/scripts/test.sh"
+      - "Verify: ls -la /tmp/lab/scripts/test.sh"
+
+  - id: process-management
+    description: "Run a background process, list it, then terminate it"
+    hints:
+      - "Start background: sleep 300 &"
+      - "List jobs: jobs"
+      - "Find PID: ps aux | grep sleep"
+      - "Kill by name: pkill sleep  OR  kill <PID>"
+
+  - id: redirects-and-pipes
+    description: "Redirect command output to a file, then use tee to write to file AND stdout simultaneously"
+    hints:
+      - "Redirect stdout: ls -la /etc > /tmp/lab/logs/etc-listing.txt"
+      - "Redirect stderr: ls /nonexistent 2> /tmp/lab/logs/errors.txt"
+      - "Both streams: ls /etc /nonexistent > /tmp/lab/logs/all.txt 2>&1"
+      - "tee: ls /etc | tee /tmp/lab/logs/tee-output.txt | wc -l"
+
+validation_steps:
+  - "Docker is running and can pull Alpine"
+  - "Container spawns and shell is accessible"
+  - "find, grep, awk commands execute without errors"
+
+grading_rules:
+  - check: "docker info &>/dev/null"
+    points: 10
+  - check: "docker run --rm alpine:3.19 find /etc -type f -size +10k | wc -l | grep -qE '^[1-9]'"
+    points: 20
+  - check: "docker run --rm alpine:3.19 sh -c 'wc -l /etc/passwd | grep -qE \"^[[:space:]]*[0-9]+\"' && echo ok"
+    points: 20
+  - check: "docker run --rm alpine:3.19 sh -c 'awk -F: \"{print \\$7}\" /etc/passwd | sort -u | wc -l | grep -qE \"^[1-9]\"' && echo ok"
+    points: 25
+  - check: "docker run --rm alpine:3.19 sh -c 'echo test | grep -q test'"
+    points: 25
+
+cleanup_steps:
+  - "docker rmi alpine:3.19 2>/dev/null || true"
+
+related_docs:
+  - "../../../02-linux/README.md"
+
+related_cloud_services:
+  - "AWS Systems Manager Session Manager"
+  - "Azure Bastion"
+  - "GCP Identity-Aware Proxy SSH"
+
+local_only: true
+cost_warning: null
+safety_warning: null

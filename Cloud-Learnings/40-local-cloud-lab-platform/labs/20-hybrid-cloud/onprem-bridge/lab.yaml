@@ -1,0 +1,125 @@
+id: hybrid-cloud-onprem-bridge
+title: "Hybrid Cloud: Simulate On-Premises to Cloud Connectivity"
+description: >
+  Simulate a hybrid cloud architecture locally: an "on-premises" network (one
+  Docker network) connected to a "cloud" network (another Docker network) through
+  a VPN/gateway bridge container. Learn how traffic flows in hybrid environments,
+  how DNS resolves across network boundaries, and how services communicate
+  through a controlled gateway.
+
+difficulty: intermediate
+estimated_time: "60 minutes"
+category: hybrid-cloud
+
+prerequisites:
+  - "Docker running"
+  - "Core services running: make start-core"
+
+tools_required:
+  - docker
+  - curl
+
+docker_profiles:
+  - core
+
+ports_used: []
+
+learning_objectives:
+  - Create isolated Docker networks to simulate on-prem and cloud environments
+  - Run containers in specific networks
+  - Set up a gateway container that bridges two networks
+  - Route traffic between isolated networks through the bridge
+  - Understand split-horizon DNS in hybrid environments
+  - Test connectivity with curl, ping, and netcat
+  - Simulate firewall rules with iptables in containers
+
+tasks:
+  - id: create-networks
+    description: "Create two isolated Docker networks: onprem-net and cloud-net"
+    hints:
+      - "docker network create --subnet=192.168.100.0/24 onprem-net"
+      - "docker network create --subnet=10.0.100.0/24 cloud-net"
+      - "Verify: docker network ls"
+      - "Inspect subnets: docker network inspect onprem-net | python3 -c 'import sys,json; n=json.load(sys.stdin); print(n[0][\"IPAM\"][\"Config\"])'"
+
+  - id: start-onprem-services
+    description: "Start services in the on-premises network (simulating local datacenter)"
+    hints:
+      - "On-prem database: docker run -d --name onprem-db --network onprem-net -e POSTGRES_PASSWORD=secret postgres:16-alpine"
+      - "On-prem app: docker run -d --name onprem-app --network onprem-net nginx:alpine"
+      - "Verify they can communicate: docker exec onprem-app ping -c 2 onprem-db"
+
+  - id: start-cloud-services
+    description: "Start services in the cloud network"
+    hints:
+      - "Cloud app: docker run -d --name cloud-app --network cloud-net nginx:alpine"
+      - "Cloud API: docker run -d --name cloud-api --network cloud-net alpine:3.19 sleep 3600"
+      - "Try (and fail): docker exec cloud-app ping onprem-app (different networks)"
+      - "This demonstrates network isolation between on-prem and cloud"
+
+  - id: create-gateway
+    description: "Create a bridge/gateway container attached to BOTH networks"
+    hints:
+      - "Start gateway on onprem-net: docker run -d --name gateway --network onprem-net --cap-add=NET_ADMIN alpine:3.19 sleep 3600"
+      - "Also connect to cloud-net: docker network connect cloud-net gateway"
+      - "Verify: docker inspect gateway | python3 -c 'import sys,json; c=json.load(sys.stdin); nets=list(c[0][\"NetworkSettings\"][\"Networks\"].keys()); print(nets)'"
+      - "Should show both onprem-net and cloud-net"
+
+  - id: test-routing
+    description: "Test that the gateway can reach services on both networks"
+    hints:
+      - "From gateway, reach onprem: docker exec gateway ping -c 2 onprem-app"
+      - "From gateway, reach cloud: docker exec gateway ping -c 2 cloud-app"
+      - "The gateway is the only container that can see both worlds"
+
+  - id: proxy-traffic
+    description: "Use socat or nc on the gateway to proxy traffic from cloud-net to onprem-net"
+    hints:
+      - "Install socat: docker exec gateway apk add socat -q"
+      - "Proxy port 8080 on gateway to onprem-app port 80:"
+      - "docker exec -d gateway socat TCP-LISTEN:8080,fork TCP:onprem-app:80"
+      - "From cloud-app: docker exec cloud-app wget -qO- http://gateway:8080"
+      - "This simulates a hybrid cloud API gateway / VPN"
+
+  - id: dns-resolution
+    description: "Inspect how Docker DNS resolves names across networks"
+    hints:
+      - "From cloud-app: docker exec cloud-app ping -c 1 cloud-api (same network — works)"
+      - "From cloud-app: docker exec cloud-app ping -c 1 onprem-app (different network — fails)"
+      - "From gateway: docker exec gateway ping -c 1 onprem-app (works — gateway spans both)"
+      - "This mirrors split-horizon DNS in real hybrid environments"
+
+validation_steps:
+  - "onprem-net and cloud-net Docker networks exist"
+  - "gateway container is connected to both networks"
+  - "Traffic can flow from cloud-net to onprem-net through gateway"
+
+grading_rules:
+  - check: "docker network ls 2>/dev/null | grep -q onprem-net"
+    points: 20
+  - check: "docker network ls 2>/dev/null | grep -q cloud-net"
+    points: 20
+  - check: "docker inspect gateway 2>/dev/null | python3 -c \"import sys,json; c=json.load(sys.stdin); nets=list(c[0]['NetworkSettings']['Networks'].keys()); exit(0 if 'onprem-net' in nets and 'cloud-net' in nets else 1)\" 2>/dev/null && echo pass"
+    points: 35
+  - check: "docker exec gateway ping -c 1 onprem-app 2>/dev/null && echo pass"
+    points: 25
+
+cleanup_steps:
+  - "docker stop gateway onprem-app onprem-db cloud-app cloud-api 2>/dev/null || true"
+  - "docker rm gateway onprem-app onprem-db cloud-app cloud-api 2>/dev/null || true"
+  - "docker network rm onprem-net cloud-net 2>/dev/null || true"
+
+related_docs:
+  - "../../../21-multi-hybrid-cloud/README.md"
+
+related_cloud_services:
+  - "AWS Direct Connect"
+  - "AWS VPN Gateway"
+  - "Azure ExpressRoute"
+  - "Azure VPN Gateway"
+  - "GCP Cloud Interconnect"
+  - "GCP Cloud VPN"
+
+local_only: true
+cost_warning: null
+safety_warning: null

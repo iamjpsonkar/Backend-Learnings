@@ -1,0 +1,118 @@
+# Environment — contains local credentials (even if fake)
+.env
+
+# Platform database
+api/lab_platform.db
+api/data/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Node / React
+ui/node_modules/
+ui/dist/
+ui/.cache/
+ui/coverage/
+.npm/
+
+# Terraform state (local only — never commit real state)
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+**/.terraform.lock.hcl
+**/terraform.tfvars
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
+**/.terraformrc
+**/terraform.rc
+
+# Ansible
+*.retry
+ansible/.vault_pass
+
+# Kubernetes
+**/.kube/
+**/kubeconfig
+**/kind-*.yaml
+
+# kind cluster kubeconfig exports
+kind-*.kubeconfig
+
+# SSH keys (never commit real keys)
+**/*.pem
+**/*.key
+**/*.crt
+**/*.csr
+**/id_rsa
+**/id_ed25519
+# Keep .gitkeep files that ensure empty dirs are tracked
+!.gitkeep
+
+# Vault tokens
+**/.vault-token
+**/vault.db
+
+# Reports output directory (generated)
+reports/*.json
+reports/*.html
+reports/*.pdf
+
+# Lab run artifacts
+labs/**/.lab_run/
+labs/**/grade_output.json
+
+# Docker volumes that get mounted as host dirs
+volumes/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# tmp
+tmp/
+temp/
+.tmp/

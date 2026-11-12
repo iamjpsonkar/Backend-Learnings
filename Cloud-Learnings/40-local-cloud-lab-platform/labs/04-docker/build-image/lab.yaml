@@ -1,0 +1,115 @@
+id: docker-build-image
+title: "Docker: Build, Tag, and Optimize Images"
+description: >
+  Go beyond running containers — learn to build your own Docker images.
+  Write a Dockerfile for a Python web app, optimize it with multi-stage builds,
+  understand layer caching, scan for vulnerabilities, and tag images for a registry.
+
+difficulty: beginner
+estimated_time: "60 minutes"
+category: docker
+
+prerequisites:
+  - "Docker installed and running"
+  - "Core services running: make start-core"
+
+tools_required:
+  - docker
+
+docker_profiles:
+  - core
+
+ports_used:
+  - 8888
+
+learning_objectives:
+  - Write a Dockerfile with FROM, COPY, RUN, ENV, EXPOSE, CMD
+  - Understand how Docker image layers work
+  - Use .dockerignore to exclude unnecessary files
+  - Build a multi-stage image to reduce final size
+  - Tag and inspect images with docker tag, docker image ls, docker inspect
+  - Understand ENTRYPOINT vs CMD
+  - Use ARG for build-time variables
+
+tasks:
+  - id: write-dockerfile
+    description: "Write a Dockerfile for a simple Python HTTP server (no frameworks needed)"
+    hints:
+      - "Create a directory: mkdir ~/docker-lab && cd ~/docker-lab"
+      - "Write a simple server: echo 'import http.server; http.server.test()' > server.py"
+      - "Dockerfile: FROM python:3.11-alpine, WORKDIR /app, COPY server.py ., EXPOSE 8000, CMD ['python3', '-m', 'http.server', '8000']"
+      - "Build: docker build -t my-server:v1 ."
+
+  - id: inspect-layers
+    description: "Use docker history to see the layers in your image and understand layer caching"
+    hints:
+      - "docker history my-server:v1"
+      - "Each RUN, COPY, ADD adds a layer"
+      - "Rebuild without changes to see cache hits: docker build -t my-server:v1 . (should say 'Using cache')"
+      - "Change a file and rebuild — only layers after the change are rebuilt"
+
+  - id: dockerignore
+    description: "Create a .dockerignore file to exclude local test files from the build context"
+    hints:
+      - "Create: echo -e '__pycache__/\\n*.pyc\\n.git\\n.env\\ntests/' > .dockerignore"
+      - "Build with DOCKER_BUILDKIT=1 and --progress=plain to see what's in build context"
+      - "docker build --no-cache -t my-server:v2 . (forces full rebuild)"
+
+  - id: multistage-build
+    description: "Write a multi-stage Dockerfile: builder stage installs deps, runtime stage copies only what's needed"
+    hints:
+      - "Stage 1 (builder): FROM python:3.11 AS builder, install deps with pip"
+      - "Stage 2 (runtime): FROM python:3.11-alpine, COPY --from=builder /usr/local/lib/python3.11 ..."
+      - "Final image should be smaller: compare docker image ls sizes"
+      - "Alpine base images are 5-10x smaller than Debian/Ubuntu"
+
+  - id: tag-and-run
+    description: "Tag your image for the local registry, run it, and verify it serves HTTP traffic"
+    hints:
+      - "Tag: docker tag my-server:v1 localhost:5000/my-server:v1 (if registry running)"
+      - "Or just: docker tag my-server:v1 my-server:latest"
+      - "Run on port 8888: docker run -d -p 8888:8000 --name test-server my-server:v1"
+      - "Test: curl http://localhost:8888"
+      - "Stop: docker stop test-server && docker rm test-server"
+
+  - id: entrypoint-vs-cmd
+    description: "Understand the difference: replace CMD with ENTRYPOINT and test both behaviors"
+    hints:
+      - "CMD can be overridden: docker run my-server:v1 echo overridden"
+      - "ENTRYPOINT is always run; CMD becomes default arguments"
+      - "Pattern: ENTRYPOINT ['python3'] and CMD ['-m', 'http.server', '8000']"
+      - "Then: docker run my-server:v1 --version  (runs python3 --version)"
+
+validation_steps:
+  - "Image my-server:v1 exists in local Docker"
+  - "Image runs and serves on port 8888"
+  - "docker history shows multiple layers"
+
+grading_rules:
+  - check: "docker image ls my-server:v1 2>/dev/null | grep -q my-server"
+    points: 25
+  - check: "docker run -d -p 8888:8000 --name grade-server my-server:v1 2>/dev/null && sleep 2 && curl -sf http://localhost:8888 >/dev/null && docker stop grade-server >/dev/null && docker rm grade-server >/dev/null && echo pass"
+    points: 35
+  - check: "docker history my-server:v1 2>/dev/null | wc -l | grep -qE '^[3-9]|^[0-9]{2}'"
+    points: 20
+  - check: "docker image inspect my-server:v1 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if d[0].get('Config',{}).get('ExposedPorts') else 1)\""
+    points: 20
+
+cleanup_steps:
+  - "docker stop grade-server 2>/dev/null || true"
+  - "docker rm grade-server 2>/dev/null || true"
+  - "docker rmi my-server:v1 my-server:latest 2>/dev/null || true"
+  - "rm -rf ~/docker-lab || true"
+
+related_docs:
+  - "../../../09-containers/README.md"
+
+related_cloud_services:
+  - "AWS ECR"
+  - "Azure Container Registry"
+  - "GCP Artifact Registry"
+  - "Docker Hub"
+
+local_only: true
+cost_warning: null
+safety_warning: null

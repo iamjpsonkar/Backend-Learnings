@@ -1,0 +1,129 @@
+id: troubleshoot-high-cpu
+title: "Production Troubleshooting: High CPU Investigation"
+description: >
+  A container is consuming unexpected CPU. Diagnose, identify the root cause,
+  and fix it. Practice the real SRE/DevOps workflow: observe metrics, profile
+  the process, identify the offending code path, and resolve without restarting
+  the service. This lab simulates a real production high-CPU incident.
+
+difficulty: intermediate
+estimated_time: "45 minutes"
+category: production-troubleshooting
+
+prerequisites:
+  - "Docker running"
+  - "Observability stack running: make start-observability (for metrics)"
+
+tools_required:
+  - docker
+  - top
+  - python3
+
+docker_profiles:
+  - observability
+
+ports_used: []
+
+learning_objectives:
+  - Use docker stats to identify CPU-heavy containers
+  - Exec into a container and use top/htop to find the offending process
+  - Use py-spy or perf to profile a Python process
+  - Read strace output to understand syscall patterns
+  - Apply a fix without downtime using kill -HUP or config reload
+  - Correlate CPU spikes with Prometheus metrics
+  - Write a post-incident report template
+
+tasks:
+  - id: start-cpu-hog
+    description: "Start a container that simulates high CPU usage (busy loop)"
+    hints:
+      - "docker run -d --name cpu-hog --cpus=0.5 --memory=128m python:3.11-alpine python3 -c 'while True: [x**2 for x in range(10000)]'"
+      - "This simulates a runaway computation or infinite retry loop"
+      - "Check CPU: docker stats cpu-hog --no-stream"
+      - "Should show near 100% CPU (within the 0.5 CPU limit)"
+
+  - id: observe-metrics
+    description: "Observe CPU usage using docker stats and Prometheus if available"
+    hints:
+      - "Live stats: docker stats (all containers)"
+      - "Single container: docker stats cpu-hog --format 'table {{.Name}}\\t{{.CPUPerc}}\\t{{.MemUsage}}'"
+      - "Historical in Prometheus: rate(container_cpu_usage_seconds_total[1m]) by pod or container"
+      - "Alert threshold: CPU > 80% for 5 minutes"
+
+  - id: identify-process
+    description: "Exec into the container and find the specific process consuming CPU"
+    hints:
+      - "docker exec -it cpu-hog sh"
+      - "Inside container: top (or ps aux if top not available)"
+      - "Look for PID 1 or child PIDs with high %CPU"
+      - "apk add htop -q && htop (for better visibility)"
+      - "ps aux --sort=-%cpu | head -10"
+
+  - id: profile-python
+    description: "Profile the Python process to identify the hot code path"
+    hints:
+      - "Get PID: docker exec cpu-hog pgrep python3"
+      - "Using py-spy (if installed): py-spy top --pid <PID>"
+      - "Alternative inside container: python3 -c 'import cProfile; import pstats'"
+      - "The list comprehension [x**2 for x in range(10000)] is the hot path"
+      - "Real scenarios: infinite retry loops, N+1 queries, regex catastrophic backtracking"
+
+  - id: analyze-strace
+    description: "Use strace to see what system calls the process is making"
+    hints:
+      - "docker exec cpu-hog apk add strace -q"
+      - "strace -p $(docker exec cpu-hog pgrep python3) -c -e trace=all -f 2>/dev/null"
+      - "-c gives a count/time summary of syscalls"
+      - "A CPU hog typically shows many sys_futex or brk/mmap calls"
+
+  - id: throttle-and-fix
+    description: "Apply a fix: update the container's CPU limit and verify metrics improve"
+    hints:
+      - "Update CPU limit (live): docker update --cpus=0.1 cpu-hog"
+      - "Verify: docker stats cpu-hog --no-stream"
+      - "In real production: fix the code (add sleep, reduce loop iterations, add cache)"
+      - "Code fix simulation: docker exec cpu-hog sh -c 'kill -TERM 1' (terminates the loop)"
+
+  - id: post-incident-report
+    description: "Document the incident using the 5-whys methodology"
+    hints:
+      - "Create: ~/post-incident-report.md"
+      - "Sections: Incident Summary, Timeline, Root Cause (5 Whys), Impact, Resolution, Prevention"
+      - "5 Whys example: CPU high → why? Infinite loop → why? Missing rate limiter → why? No test for retry logic → why? No runbook → why? No on-call handoff"
+      - "Action items: add CPU alerts, add retry backoff, add runbook"
+
+validation_steps:
+  - "cpu-hog container is running"
+  - "docker stats shows high CPU usage"
+  - "Root cause identified via exec + top"
+
+grading_rules:
+  - check: "docker ps --format '{{.Names}}' 2>/dev/null | grep -q cpu-hog"
+    points: 20
+  - check: "docker stats cpu-hog --no-stream --format '{{.CPUPerc}}' 2>/dev/null | grep -qE '^[0-9]+'"
+    points: 25
+  - check: "docker exec cpu-hog sh -c 'pgrep python3 || pgrep python' 2>/dev/null | grep -qE '^[0-9]+'"
+    points: 25
+  - check: "docker exec cpu-hog sh -c 'ps aux' 2>/dev/null | grep -qi python"
+    points: 15
+  - check: "[ -f ~/post-incident-report.md ] && grep -qi 'root cause\\|5 why\\|timeline' ~/post-incident-report.md && echo pass"
+    points: 15
+
+cleanup_steps:
+  - "docker stop cpu-hog 2>/dev/null || true"
+  - "docker rm cpu-hog 2>/dev/null || true"
+  - "rm -f ~/post-incident-report.md || true"
+
+related_docs:
+  - "../../../25-troubleshooting/README.md"
+
+related_cloud_services:
+  - "AWS CloudWatch Container Insights"
+  - "AWS X-Ray"
+  - "Azure Monitor Container Insights"
+  - "GCP Cloud Profiler"
+  - "Datadog APM"
+
+local_only: true
+cost_warning: null
+safety_warning: null

@@ -1,0 +1,107 @@
+id: prometheus-basics
+title: "Prometheus: Metrics Collection and PromQL Queries"
+description: >
+  Learn Prometheus fundamentals by exploring metrics from the running lab platform,
+  writing PromQL queries, creating recording rules, and understanding metric types
+  (Counter, Gauge, Histogram, Summary). All services are already instrumented.
+
+difficulty: beginner
+estimated_time: "45 minutes"
+category: observability
+
+prerequisites:
+  - "Observability stack running: make start-observability"
+  - "Core services running: make start-core"
+
+tools_required:
+  - curl
+
+docker_profiles:
+  - observability
+  - core
+
+ports_used:
+  - 9090
+  - 3000
+
+learning_objectives:
+  - Query Prometheus using PromQL
+  - Understand the four metric types (Counter, Gauge, Histogram, Summary)
+  - Use rate(), irate(), increase() for counters
+  - Filter metrics using label selectors
+  - Create recording rules
+  - Explore Prometheus targets and service discovery
+
+tasks:
+  - id: explore-prometheus-ui
+    description: "Open the Prometheus UI at http://localhost:9090 and explore the Graph, Targets, and Rules pages"
+    hints:
+      - "Status > Targets shows all scrape targets and their UP/DOWN status"
+      - "Status > Configuration shows the prometheus.yml config"
+      - "Graph tab is for ad-hoc PromQL queries"
+
+  - id: query-up-metric
+    description: "Query the 'up' metric to see which targets are being scraped successfully"
+    hints:
+      - "PromQL: up"
+      - "Filter to a specific job: up{job=\"prometheus\"}"
+      - "Count up targets: count(up == 1)"
+
+  - id: query-process-metrics
+    description: "Find the memory usage of the Prometheus process itself"
+    hints:
+      - "Metric: process_resident_memory_bytes"
+      - "In MB: process_resident_memory_bytes / 1024 / 1024"
+      - "Filter: process_resident_memory_bytes{job=\"prometheus\"}"
+
+  - id: rate-query
+    description: "Calculate the rate of HTTP requests to the Lab API over the last 5 minutes"
+    hints:
+      - "Use rate() with a counter metric: rate(counter_metric[5m])"
+      - "Look for http_requests_total or similar in the API metrics"
+      - "If the API doesn't expose metrics, try: rate(prometheus_http_requests_total[5m])"
+
+  - id: histogram-query
+    description: "Query the 95th percentile of request durations using histogram_quantile"
+    hints:
+      - "Formula: histogram_quantile(0.95, rate(metric_bucket[5m]))"
+      - "Look for metrics ending in _bucket"
+      - "Example: histogram_quantile(0.95, rate(prometheus_http_request_duration_seconds_bucket[5m]))"
+
+  - id: explore-grafana
+    description: "Open Grafana at http://localhost:3000 and find the Prometheus datasource"
+    hints:
+      - "Default login: admin / adminpassword123"
+      - "Go to: Configuration > Data sources"
+      - "The Prometheus datasource should already be provisioned"
+
+validation_steps:
+  - "Prometheus UI loads at http://localhost:9090"
+  - "Status > Targets shows at least prometheus itself as UP"
+  - "Grafana loads at http://localhost:3000"
+  - "Prometheus datasource is configured in Grafana"
+
+grading_rules:
+  - check: "curl -sf http://localhost:9090/-/ready | grep -qi ready"
+    points: 20
+  - check: "curl -sf 'http://localhost:9090/api/v1/query?query=up' | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if d['status']=='success' else 1)\""
+    points: 30
+  - check: "curl -sf http://localhost:3000/api/health | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if d.get('database')=='ok' else 1)\""
+    points: 25
+  - check: "curl -sf 'http://localhost:9090/api/v1/targets' | python3 -c \"import sys,json; d=json.load(sys.stdin); targets=d['data']['activeTargets']; exit(0 if any(t['health']=='up' for t in targets) else 1)\""
+    points: 25
+
+cleanup_steps: []
+
+related_docs:
+  - "../../../15-observability/README.md"
+
+related_cloud_services:
+  - "AWS CloudWatch"
+  - "Azure Monitor"
+  - "GCP Cloud Monitoring"
+  - "Datadog, New Relic (SaaS options)"
+
+local_only: true
+cost_warning: null
+safety_warning: null

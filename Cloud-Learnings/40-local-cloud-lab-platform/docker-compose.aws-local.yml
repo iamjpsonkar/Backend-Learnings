@@ -1,0 +1,78 @@
+# docker-compose.aws-local.yml — LocalStack (AWS services emulator)
+# Emulates: S3, SQS, SNS, Lambda, DynamoDB, IAM, API GW, CloudFormation, and more
+# ~512 MB RAM
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.aws-local.yml \
+#     --profile core --profile aws-local up -d
+#
+# Access:
+#   aws --endpoint-url=http://localhost:4566 s3 ls
+#   OR install awslocal: pip install awscli-local
+#   Then: awslocal s3 ls
+
+name: local-cloud-lab
+
+networks:
+  cloud-lab-network:
+    external: true
+
+volumes:
+  localstack-data:
+    name: cloud-lab-localstack-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+
+services:
+
+  # ─────────────────────────────────────────────
+  # LocalStack — AWS service emulator
+  # Endpoint: http://localhost:4566
+  # Health:   http://localhost:4566/health
+  # ─────────────────────────────────────────────
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: cloud-lab-localstack
+    profiles: [aws-local]
+    # Apple Silicon compatibility
+    platform: linux/amd64
+    environment:
+      # Services to enable (free tier — no Pro required)
+      SERVICES: >-
+        s3,sqs,sns,lambda,dynamodb,iam,apigateway,cloudformation,
+        cloudwatch,logs,events,kinesis,secretsmanager,ssm,
+        sts,ec2,route53,elasticache
+      DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      # Persistence: save state across restarts
+      PERSISTENCE: "1"
+      # Docker socket for Lambda
+      DOCKER_HOST: unix:///var/run/docker.sock
+      # Output format
+      LS_LOG: warn
+      # Edge port
+      GATEWAY_LISTEN: 0.0.0.0:4566
+    ports:
+      - "${LOCALSTACK_PORT:-4566}:4566"
+    volumes:
+      - localstack-data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./configs/localstack/init-scripts/:/etc/localstack/init/ready.d/:ro
+    networks:
+      cloud-lab-network:
+        ipv4_address: 172.20.0.50
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: localstack
+      traefik.enable: "true"
+      traefik.http.routers.localstack.rule: "Host(`localstack.localhost`)"
+      traefik.http.services.localstack.loadbalancer.server.port: "4566"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4566/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+    restart: unless-stopped

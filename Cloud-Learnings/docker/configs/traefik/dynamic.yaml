@@ -1,0 +1,21 @@
+# Traefik dynamic configuration
+# This file is watched for changes — no restart needed
+
+http:
+  middlewares:
+    # Add security headers to all responses
+    secure-headers:
+      headers:
+        contentTypeNosniff: true
+        browserXssFilter: true
+        frameDeny: false
+        stsSeconds: 0  # Not using HTTPS in local dev
+
+    # Strip /api prefix for routing
+    strip-api-prefix:
+      stripPrefix:
+        prefixes:
+          - /api
+
+  routers: {}
+  services: {}

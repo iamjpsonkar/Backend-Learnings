@@ -1,0 +1,152 @@
+# lab-runner/schemas/lab_schema.yaml
+# JSON Schema (in YAML format) for lab.yaml validation
+# Used by validate-all command
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: "Lab Definition"
+description: "Schema for lab.yaml files in the Local Cloud Lab Platform"
+type: object
+
+required:
+  - id
+  - title
+  - description
+  - difficulty
+  - category
+
+properties:
+  id:
+    type: string
+    pattern: "^[a-z0-9][a-z0-9\\-_/]*$"
+    description: "Unique lab identifier, e.g. 'docker-basics' or '04-docker/docker-basics'"
+
+  title:
+    type: string
+    minLength: 3
+    maxLength: 100
+    description: "Human-readable lab title"
+
+  description:
+    type: string
+    minLength: 10
+    description: "Lab description shown in the catalog"
+
+  difficulty:
+    type: string
+    enum: [beginner, intermediate, advanced]
+
+  estimated_time:
+    type: string
+    description: "e.g. '30 minutes', '1 hour'"
+
+  category:
+    type: string
+    description: "Lab category, e.g. 'kubernetes', 'terraform', 'docker'"
+
+  prerequisites:
+    type: array
+    items:
+      type: string
+    default: []
+
+  tools_required:
+    type: array
+    items:
+      type: string
+    default: []
+
+  docker_profiles:
+    type: array
+    items:
+      type: string
+      enum: [core, observability, security, cicd, data, aws-local, azure-local, kubernetes]
+    default: []
+    description: "Docker Compose profiles that must be running for this lab"
+
+  ports_used:
+    type: array
+    items:
+      type: integer
+    default: []
+
+  learning_objectives:
+    type: array
+    items:
+      type: string
+    default: []
+
+  tasks:
+    type: array
+    items:
+      type: object
+      required: [description]
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+          minLength: 5
+        hints:
+          type: array
+          items:
+            type: string
+    default: []
+
+  validation_steps:
+    type: array
+    items:
+      type: string
+    default: []
+    description: "Human-readable validation checklist shown to the user"
+
+  grading_rules:
+    type: array
+    items:
+      type: object
+      required: [check, points]
+      properties:
+        check:
+          type: string
+        points:
+          type: integer
+          minimum: 0
+    default: []
+
+  cleanup_steps:
+    type: array
+    items:
+      type: string
+    default: []
+    description: "Steps to clean up after the lab"
+
+  related_docs:
+    type: array
+    items:
+      type: string
+    default: []
+    description: "Paths to related Cloud-Learnings documentation"
+
+  related_cloud_services:
+    type: array
+    items:
+      type: string
+    default: []
+
+  local_only:
+    type: boolean
+    default: true
+    description: "If false, lab can optionally use real cloud resources"
+
+  optional_real_cloud:
+    type: [string, "null"]
+    description: "Description of how to extend this lab to real cloud (optional)"
+
+  cost_warning:
+    type: [string, "null"]
+    description: "Warning about potential costs if real cloud commands are run"
+
+  safety_warning:
+    type: [string, "null"]
+    description: "Safety warning for destructive or risky lab steps"
+
+additionalProperties: false

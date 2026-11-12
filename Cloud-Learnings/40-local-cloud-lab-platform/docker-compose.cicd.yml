@@ -1,0 +1,151 @@
+# docker-compose.cicd.yml — CI/CD services
+# Gitea (Git server), Woodpecker CI
+# ~1.5 GB RAM
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.cicd.yml \
+#     --profile core --profile cicd up -d
+#
+# Setup after first start:
+#   1. Visit http://localhost:18080 — complete Gitea installation wizard
+#   2. Create admin account (use values from .env)
+#   3. Create a Gitea OAuth application for Woodpecker
+#   4. Update WOODPECKER_GITEA_CLIENT and WOODPECKER_GITEA_SECRET in .env
+#   5. Restart: make stop && make start-cicd
+
+name: local-cloud-lab
+
+networks:
+  cloud-lab-network:
+    external: true
+
+volumes:
+  gitea-data:
+    name: cloud-lab-gitea-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+  gitea-config:
+    name: cloud-lab-gitea-config
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+  woodpecker-data:
+    name: cloud-lab-woodpecker-data
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+
+services:
+
+  # ─────────────────────────────────────────────
+  # Gitea — Self-hosted Git server
+  # http://localhost:18080
+  # ─────────────────────────────────────────────
+  gitea:
+    image: gitea/gitea:1.21
+    container_name: cloud-lab-gitea
+    profiles: [cicd]
+    environment:
+      USER_UID: "1000"
+      USER_GID: "1000"
+      GITEA__database__DB_TYPE: sqlite3
+      GITEA__database__PATH: /data/gitea/gitea.db
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__server__DOMAIN: localhost
+      GITEA__server__ROOT_URL: "http://localhost:${GITEA_PORT:-18080}"
+      GITEA__server__SSH_DOMAIN: localhost
+      GITEA__server__SSH_PORT: "${GITEA_SSH_PORT:-2222}"
+      GITEA__service__DISABLE_REGISTRATION: "false"
+      GITEA__service__REQUIRE_SIGNIN_VIEW: "false"
+      GITEA__log__LEVEL: Info
+      GITEA__actions__ENABLED: "true"
+    ports:
+      - "${GITEA_PORT:-18080}:3000"
+      - "${GITEA_SSH_PORT:-2222}:22"
+    volumes:
+      - gitea-data:/data
+      - gitea-config:/etc/gitea
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: gitea
+      traefik.enable: "true"
+      traefik.http.routers.gitea.rule: "Host(`gitea.localhost`)"
+      traefik.http.services.gitea.loadbalancer.server.port: "3000"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Woodpecker CI — Server
+  # http://localhost:18081
+  # ─────────────────────────────────────────────
+  woodpecker-server:
+    image: woodpeckerci/woodpecker-server:v2.2.0
+    container_name: cloud-lab-woodpecker-server
+    profiles: [cicd]
+    environment:
+      WOODPECKER_OPEN: "true"
+      WOODPECKER_HOST: "http://localhost:${WOODPECKER_PORT:-18081}"
+      WOODPECKER_GITEA: "true"
+      WOODPECKER_GITEA_URL: "${WOODPECKER_GITEA_URL:-http://gitea:3000}"
+      WOODPECKER_GITEA_CLIENT: "${WOODPECKER_GITEA_CLIENT:-woodpecker-oauth-client}"
+      WOODPECKER_GITEA_SECRET: "${WOODPECKER_GITEA_SECRET:-woodpecker-oauth-secret}"
+      WOODPECKER_AGENT_SECRET: "${WOODPECKER_AGENT_SECRET:-supersecretagentsecret123}"
+      WOODPECKER_DATABASE_DRIVER: sqlite3
+      WOODPECKER_DATABASE_DATASOURCE: /var/lib/woodpecker/woodpecker.sqlite
+      WOODPECKER_LOG_LEVEL: info
+    ports:
+      - "${WOODPECKER_PORT:-18081}:8000"
+      - "9000:9000"
+    volumes:
+      - woodpecker-data:/var/lib/woodpecker
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: woodpecker-server
+      traefik.enable: "true"
+      traefik.http.routers.woodpecker.rule: "Host(`woodpecker.localhost`)"
+      traefik.http.services.woodpecker.loadbalancer.server.port: "8000"
+    depends_on:
+      gitea:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────
+  # Woodpecker CI — Agent (runs pipeline jobs)
+  # ─────────────────────────────────────────────
+  woodpecker-agent:
+    image: woodpeckerci/woodpecker-agent:v2.2.0
+    container_name: cloud-lab-woodpecker-agent
+    profiles: [cicd]
+    environment:
+      WOODPECKER_SERVER: woodpecker-server:9000
+      WOODPECKER_AGENT_SECRET: "${WOODPECKER_AGENT_SECRET:-supersecretagentsecret123}"
+      WOODPECKER_BACKEND: docker
+      WOODPECKER_BACKEND_DOCKER_NETWORK: cloud-lab-network
+      WOODPECKER_LOG_LEVEL: info
+      DOCKER_HOST: unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cloud-lab-network
+    labels:
+      com.cloudlabs.project: local-cloud-lab
+      com.cloudlabs.service: woodpecker-agent
+    depends_on:
+      woodpecker-server:
+        condition: service_healthy
+    restart: unless-stopped

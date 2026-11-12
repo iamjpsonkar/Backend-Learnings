@@ -1,0 +1,123 @@
+id: k8s-deploy-first-app
+title: "Kubernetes: Deploy Your First Application"
+description: >
+  Learn the Kubernetes fundamentals by deploying a real app to a local kind cluster.
+  Create a Deployment, expose it with a Service, configure resource limits,
+  check logs, exec into pods, and perform a rolling update — the complete
+  beginner workflow for Kubernetes.
+
+difficulty: beginner
+estimated_time: "60 minutes"
+category: kubernetes
+
+prerequisites:
+  - "kind cluster running: make k8s-create"
+  - "kubectl configured: kubectl get nodes"
+
+tools_required:
+  - kubectl
+  - kind
+
+docker_profiles: []
+
+ports_used:
+  - 30080
+
+learning_objectives:
+  - Create a Deployment with replicas and resource limits
+  - Expose an application with a ClusterIP and NodePort Service
+  - Inspect Pod logs and exec into a running container
+  - Perform a rolling update and rollback
+  - Use labels and selectors to group resources
+  - Understand the Deployment → ReplicaSet → Pod relationship
+  - Scale an application with kubectl scale
+
+tasks:
+  - id: verify-cluster
+    description: "Verify the kind cluster is running and all nodes are Ready"
+    hints:
+      - "kubectl get nodes"
+      - "Should show control-plane + 2 workers all in Ready state"
+      - "If not running: make k8s-create (takes ~2 minutes)"
+      - "Check context: kubectl config current-context (should be kind-cloud-lab)"
+
+  - id: create-deployment
+    description: "Create a Deployment running nginx:alpine with 2 replicas and resource limits"
+    hints:
+      - "kubectl create deployment webapp --image=nginx:alpine --replicas=2"
+      - "Or write a YAML manifest and apply it"
+      - "Add resource limits: kubectl set resources deployment webapp --limits=cpu=100m,memory=128Mi"
+      - "Watch pods start: kubectl get pods -w"
+
+  - id: create-service
+    description: "Expose the webapp Deployment as a NodePort Service on port 30080"
+    hints:
+      - "kubectl expose deployment webapp --port=80 --type=NodePort"
+      - "Edit to set specific nodePort: kubectl edit service webapp"
+      - "Set nodePort: 30080 under ports"
+      - "Access: curl http://localhost:30080"
+
+  - id: inspect-pods
+    description: "View pod logs, describe a pod, and exec into a running container"
+    hints:
+      - "Get pod name: kubectl get pods -l app=webapp"
+      - "View logs: kubectl logs <pod-name>"
+      - "Describe pod: kubectl describe pod <pod-name>"
+      - "Exec into container: kubectl exec -it <pod-name> -- sh"
+      - "From inside: cat /etc/nginx/nginx.conf"
+
+  - id: rolling-update
+    description: "Update the webapp image to nginx:1.25-alpine and watch the rolling update"
+    hints:
+      - "kubectl set image deployment/webapp nginx=nginx:1.25-alpine"
+      - "Watch rollout: kubectl rollout status deployment/webapp"
+      - "See history: kubectl rollout history deployment/webapp"
+      - "Rollback: kubectl rollout undo deployment/webapp"
+
+  - id: scale
+    description: "Scale the webapp to 4 replicas, verify, then scale back to 2"
+    hints:
+      - "kubectl scale deployment webapp --replicas=4"
+      - "kubectl get pods -l app=webapp"
+      - "kubectl scale deployment webapp --replicas=2"
+      - "kubectl get pods (should show 2 running, others terminating)"
+
+  - id: cleanup
+    description: "Delete the Deployment and Service cleanly"
+    hints:
+      - "kubectl delete deployment webapp"
+      - "kubectl delete service webapp"
+      - "Or delete by label: kubectl delete all -l app=webapp"
+      - "Verify: kubectl get pods (should be empty)"
+
+validation_steps:
+  - "kind cluster is running with kubectl get nodes"
+  - "Deployment webapp exists with 2 replicas"
+  - "Service webapp exists and is accessible"
+
+grading_rules:
+  - check: "kubectl get nodes --context kind-cloud-lab 2>/dev/null | grep -q Ready"
+    points: 20
+  - check: "kubectl create deployment grade-webapp --image=nginx:alpine --replicas=2 --context kind-cloud-lab 2>/dev/null && sleep 5 && kubectl get pods -l app=grade-webapp --context kind-cloud-lab | grep -q Running && kubectl delete deployment grade-webapp --context kind-cloud-lab &>/dev/null && echo pass"
+    points: 30
+  - check: "kubectl get nodes --context kind-cloud-lab 2>/dev/null | grep -qE 'worker|Ready'"
+    points: 25
+  - check: "kubectl version --context kind-cloud-lab 2>/dev/null | grep -qi 'server'"
+    points: 25
+
+cleanup_steps:
+  - "kubectl delete deployment webapp 2>/dev/null || true"
+  - "kubectl delete service webapp 2>/dev/null || true"
+  - "kubectl delete deployment grade-webapp 2>/dev/null || true"
+
+related_docs:
+  - "../../../10-kubernetes/README.md"
+
+related_cloud_services:
+  - "AWS EKS"
+  - "Azure AKS"
+  - "GCP GKE"
+
+local_only: true
+cost_warning: null
+safety_warning: null

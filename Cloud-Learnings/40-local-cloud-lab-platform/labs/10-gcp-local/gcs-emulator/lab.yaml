@@ -1,0 +1,108 @@
+id: gcs-emulator
+title: "GCP Local: Cloud Storage Emulation with fake-gcs-server"
+description: >
+  Practice Google Cloud Storage (GCS) operations using fake-gcs-server —
+  an open-source GCS emulator. Create buckets, upload objects, set IAM policies,
+  and use the gsutil or Python client — all locally without a GCP account.
+  Spins up the emulator with Docker directly.
+
+difficulty: beginner
+estimated_time: "45 minutes"
+category: gcp-local
+
+prerequisites:
+  - "Docker running"
+  - "gsutil OR python3 with google-cloud-storage installed (optional)"
+
+tools_required:
+  - curl
+  - docker
+
+docker_profiles: []
+
+ports_used:
+  - 4443
+
+learning_objectives:
+  - Understand GCS bucket and object hierarchy
+  - Create and list buckets using the GCS API
+  - Upload, download, and delete objects
+  - Use object metadata and content types
+  - Compare GCS concepts to S3 (buckets, objects, ACLs, HMAC keys)
+  - Use the fake-gcs-server JSON API
+
+tasks:
+  - id: start-emulator
+    description: "Start the fake-gcs-server Docker container on port 4443"
+    hints:
+      - "docker run -d --name fake-gcs -p 4443:4443 fsouza/fake-gcs-server:latest -scheme http -port 4443"
+      - "Verify: curl http://localhost:4443/storage/v1/b"
+      - "Response should be: {\"kind\": \"storage#buckets\", \"items\": []}"
+      - "Stop later: docker stop fake-gcs && docker rm fake-gcs"
+
+  - id: create-bucket
+    description: "Create a GCS bucket named 'lab-gcs-bucket' using the API"
+    hints:
+      - "POST to create bucket:"
+      - "curl -X POST http://localhost:4443/storage/v1/b?project=test -H 'Content-Type: application/json' -d '{\"name\": \"lab-gcs-bucket\"}'"
+      - "List buckets: curl http://localhost:4443/storage/v1/b?project=test"
+      - "The 'project' parameter is required even for the emulator"
+
+  - id: upload-objects
+    description: "Upload 3 objects to the bucket using the multipart upload API"
+    hints:
+      - "Simple upload: curl -X POST 'http://localhost:4443/upload/storage/v1/b/lab-gcs-bucket/o?uploadType=media&name=hello.txt' -H 'Content-Type: text/plain' -d 'Hello GCS!'"
+      - "Upload JSON: curl -X POST 'http://localhost:4443/upload/storage/v1/b/lab-gcs-bucket/o?uploadType=media&name=data.json' -H 'Content-Type: application/json' -d '{\"key\":\"value\"}'"
+      - "List objects: curl http://localhost:4443/storage/v1/b/lab-gcs-bucket/o"
+
+  - id: download-object
+    description: "Download an object and verify its content"
+    hints:
+      - "Download: curl http://localhost:4443/storage/v1/b/lab-gcs-bucket/o/hello.txt?alt=media"
+      - "Output should be 'Hello GCS!'"
+      - "The ?alt=media parameter returns the object content instead of metadata"
+
+  - id: object-metadata
+    description: "Get and inspect object metadata (size, contentType, timeCreated)"
+    hints:
+      - "curl http://localhost:4443/storage/v1/b/lab-gcs-bucket/o/hello.txt"
+      - "Shows: name, bucket, size, contentType, timeCreated, updated"
+      - "Compare to AWS S3 HeadObject response format"
+
+  - id: delete-and-cleanup
+    description: "Delete an object, then delete the bucket"
+    hints:
+      - "Delete object: curl -X DELETE http://localhost:4443/storage/v1/b/lab-gcs-bucket/o/hello.txt"
+      - "Delete bucket (must be empty first): curl -X DELETE http://localhost:4443/storage/v1/b/lab-gcs-bucket"
+      - "Note: GCS requires bucket to be empty before deletion (same as S3)"
+
+validation_steps:
+  - "fake-gcs-server is running on port 4443"
+  - "lab-gcs-bucket exists"
+  - "At least 2 objects uploaded"
+
+grading_rules:
+  - check: "docker ps --format '{{.Names}}' 2>/dev/null | grep -q fake-gcs"
+    points: 20
+  - check: "curl -sf http://localhost:4443/storage/v1/b?project=test 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if d.get('kind') == 'storage#buckets' else 1)\""
+    points: 20
+  - check: "curl -sf http://localhost:4443/storage/v1/b/lab-gcs-bucket 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if d.get('name') == 'lab-gcs-bucket' else 1)\" 2>/dev/null && echo pass"
+    points: 30
+  - check: "curl -sf http://localhost:4443/storage/v1/b/lab-gcs-bucket/o 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); items=d.get('items',[]) or []; exit(0 if len(items) >= 2 else 1)\" 2>/dev/null && echo pass"
+    points: 30
+
+cleanup_steps:
+  - "docker stop fake-gcs 2>/dev/null || true"
+  - "docker rm fake-gcs 2>/dev/null || true"
+
+related_docs:
+  - "../../../07-gcp/05-storage/README.md"
+
+related_cloud_services:
+  - "GCP Cloud Storage"
+  - "AWS S3"
+  - "Azure Blob Storage"
+
+local_only: true
+cost_warning: null
+safety_warning: null

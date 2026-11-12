@@ -1,0 +1,8 @@
+[docker_containers]
+# These use Docker exec connection — no SSH needed
+postgres    ansible_connection=docker ansible_docker_extra_args="--user root" container_name=cloud-learnings-postgres
+redis       ansible_connection=docker ansible_docker_extra_args="--user root" container_name=cloud-learnings-redis
+nginx       ansible_connection=docker ansible_docker_extra_args="--user root" container_name=cloud-learnings-nginx-toolbox
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3

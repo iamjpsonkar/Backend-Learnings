@@ -1,0 +1,59 @@
+{
+  "realm": "lab-realm",
+  "displayName": "Cloud-Learnings Lab Realm",
+  "enabled": true,
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "clients": [
+    {
+      "clientId": "sample-app",
+      "name": "Sample Application",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "redirectUris": [
+        "http://localhost:8000/*",
+        "http://localhost:8100/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8000",
+        "http://localhost:8100"
+      ],
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "labuser",
+      "email": "labuser@local.dev",
+      "firstName": "Lab",
+      "lastName": "User",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "labpassword123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["offline_access", "uma_authorization"]
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "lab-user",
+        "description": "Lab user role"
+      },
+      {
+        "name": "lab-admin",
+        "description": "Lab admin role"
+      }
+    ]
+  }
+}

@@ -1,0 +1,117 @@
+id: dns-resolution
+title: "Networking: DNS Resolution and Diagnostics"
+description: >
+  Practice DNS resolution, record lookups, and network diagnostics using
+  dig, nslookup, curl, and traceroute. Understand how DNS works end-to-end —
+  from query to authoritative answer — using the lab's internal Traefik network
+  and real public DNS servers.
+
+difficulty: beginner
+estimated_time: "45 minutes"
+category: networking
+
+prerequisites:
+  - "Core services running: make start-core"
+  - "curl, dig, or nslookup installed locally"
+
+tools_required:
+  - curl
+  - dig
+
+docker_profiles:
+  - core
+
+ports_used:
+  - 8080
+
+learning_objectives:
+  - Perform DNS lookups with dig and nslookup
+  - Understand A, CNAME, MX, TXT, NS record types
+  - Read DNS query output — sections, TTL, RCODE
+  - Test HTTP connectivity with curl and trace redirects
+  - Understand how Docker's internal DNS works
+  - Use nmap or nc to check port reachability
+
+tasks:
+  - id: dig-basics
+    description: "Use dig to look up the A record for google.com and cloudflare.com"
+    hints:
+      - "dig google.com"
+      - "Short output: dig +short google.com"
+      - "Specific record type: dig A google.com"
+      - "Notice: QUESTION SECTION, ANSWER SECTION, TTL values"
+
+  - id: dig-record-types
+    description: "Look up MX records for gmail.com and TXT records for github.com"
+    hints:
+      - "MX records: dig MX gmail.com"
+      - "TXT records: dig TXT github.com"
+      - "TXT records often contain SPF, DKIM, and domain verification entries"
+
+  - id: dig-authoritative
+    description: "Find the authoritative nameservers for amazon.com, then query one directly"
+    hints:
+      - "Find NS records: dig NS amazon.com"
+      - "Query authoritative directly: dig @ns1.p31.dynect.net amazon.com"
+      - "Compare TTL from authoritative vs. recursive resolver"
+
+  - id: reverse-dns
+    description: "Perform a reverse DNS lookup on the IP 8.8.8.8 and 1.1.1.1"
+    hints:
+      - "Reverse lookup: dig -x 8.8.8.8"
+      - "Or: nslookup 8.8.8.8"
+      - "8.8.8.8 should resolve to dns.google"
+
+  - id: docker-dns
+    description: "Inspect how Docker's internal DNS resolves service names between containers"
+    hints:
+      - "Exec into the lab-api container: docker exec -it lab-api sh"
+      - "Ping the minio service by name: ping -c 2 minio"
+      - "Look at /etc/resolv.conf — Docker injects 127.0.0.11 as DNS server"
+      - "Inspect: docker inspect lab-api | grep -i dns"
+
+  - id: curl-http-trace
+    description: "Use curl to trace an HTTP redirect and inspect response headers"
+    hints:
+      - "Follow redirects: curl -L http://github.com -v 2>&1 | head -50"
+      - "Show only headers: curl -I http://localhost:8080"
+      - "Time the request: curl -w '\\nDNS: %{time_namelookup}s\\nConnect: %{time_connect}s\\nTotal: %{time_total}s\\n' -o /dev/null -s http://localhost:8080"
+
+  - id: port-check
+    description: "Check if ports 9000, 9001, and 4567 are open and listening"
+    hints:
+      - "Using nc: nc -zv localhost 9000"
+      - "Using curl: curl -sf http://localhost:9000 || echo 'Port 9000 open'"
+      - "Using /dev/tcp: bash -c 'echo > /dev/tcp/localhost/9000' && echo open"
+
+validation_steps:
+  - "dig resolves google.com successfully"
+  - "Docker core stack is running"
+  - "Internal service DNS works between containers"
+
+grading_rules:
+  - check: "dig +short google.com | grep -qE '^[0-9]+\\.[0-9]+'"
+    points: 20
+  - check: "dig MX gmail.com | grep -qi 'google.com'"
+    points: 20
+  - check: "dig -x 8.8.8.8 | grep -qi 'dns.google'"
+    points: 20
+  - check: "curl -sf http://localhost:8080 >/dev/null || curl -sf http://localhost:8080/api/v1/health >/dev/null"
+    points: 20
+  - check: "nc -zv localhost 9000 2>&1 | grep -qi 'succeeded\\|open\\|connected'"
+    points: 20
+
+cleanup_steps: []
+
+related_docs:
+  - "../../../03-networking/README.md"
+
+related_cloud_services:
+  - "AWS Route 53"
+  - "Azure DNS"
+  - "GCP Cloud DNS"
+  - "Cloudflare DNS"
+
+local_only: false
+cost_warning: null
+safety_warning: null

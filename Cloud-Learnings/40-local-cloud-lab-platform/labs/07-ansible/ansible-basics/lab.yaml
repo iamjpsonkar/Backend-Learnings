@@ -1,0 +1,129 @@
+id: ansible-basics
+title: "Ansible: Configuration Management Fundamentals"
+description: >
+  Learn Ansible fundamentals by managing Docker containers as inventory targets.
+  Write playbooks, use modules (copy, template, service, command), work with
+  variables, loops, and conditionals — without needing real VMs or SSH targets.
+  Uses the community.docker connection plugin to manage containers directly.
+
+difficulty: beginner
+estimated_time: "60 minutes"
+category: ansible
+
+prerequisites:
+  - "ansible installed: pip3 install ansible"
+  - "community.docker collection: ansible-galaxy collection install community.docker"
+  - "Docker running"
+
+tools_required:
+  - ansible
+  - docker
+
+docker_profiles: []
+
+ports_used: []
+
+learning_objectives:
+  - Write an inventory file and ad-hoc commands
+  - Understand playbook structure (plays, tasks, modules)
+  - Use common modules: command, shell, copy, file, template, debug
+  - Work with variables (vars, vars_files, group_vars)
+  - Use loops with with_items / loop
+  - Apply conditionals with when
+  - Use handlers to restart services on change
+  - Run playbooks against Docker containers as inventory
+
+tasks:
+  - id: install-ansible
+    description: "Install Ansible and the community.docker collection"
+    hints:
+      - "pip3 install ansible"
+      - "ansible --version"
+      - "Install Docker collection: ansible-galaxy collection install community.docker"
+      - "List collections: ansible-galaxy collection list"
+
+  - id: prepare-containers
+    description: "Start two Alpine containers to act as Ansible managed nodes"
+    hints:
+      - "docker run -d --name node1 --label ansible=true alpine:3.19 sleep 3600"
+      - "docker run -d --name node2 --label ansible=true alpine:3.19 sleep 3600"
+      - "Verify: docker ps | grep node"
+
+  - id: write-inventory
+    description: "Write an inventory.yml file targeting the two Docker containers"
+    hints:
+      - "Create inventory.yml:"
+      - "  all:"
+      - "    hosts:"
+      - "      node1:"
+      - "        ansible_connection: community.docker.docker"
+      - "      node2:"
+      - "        ansible_connection: community.docker.docker"
+      - "Test: ansible all -i inventory.yml -m ping"
+
+  - id: ad-hoc-commands
+    description: "Run ad-hoc commands against both nodes to gather facts and run shell commands"
+    hints:
+      - "Check connectivity: ansible all -i inventory.yml -m ping"
+      - "Run command: ansible all -i inventory.yml -m command -a 'hostname'"
+      - "Get OS info: ansible all -i inventory.yml -m setup -a 'filter=ansible_os_family'"
+      - "Copy a file: ansible all -i inventory.yml -m copy -a 'content=hello dest=/tmp/hello.txt'"
+
+  - id: write-playbook
+    description: "Write a playbook that installs curl, creates a directory, and writes a config file on all nodes"
+    hints:
+      - "Create site.yml with a play targeting 'all'"
+      - "Tasks: (1) command: apk add --no-cache curl, (2) file: path=/etc/myapp state=directory, (3) copy: content='debug=true' dest=/etc/myapp/config"
+      - "Run: ansible-playbook -i inventory.yml site.yml"
+      - "Run again — tasks should show 'ok' (idempotent)"
+
+  - id: variables-and-loops
+    description: "Refactor the playbook to use a variable for packages and a loop to create multiple files"
+    hints:
+      - "Add vars section: packages: [curl, jq, wget]"
+      - "Use loop: - name: install packages, command: apk add --no-cache {{ item }}, loop: '{{ packages }}'"
+      - "Create multiple config files with loop: loop: [{name: app1, port: 8080}, {name: app2, port: 8081}]"
+      - "Reference: dest: '/etc/{{ item.name }}.conf'"
+
+  - id: handlers
+    description: "Add a handler that echoes 'service restarted' when a config file changes"
+    hints:
+      - "Add handlers section: handlers: - name: restart service, command: echo 'Service restarted'"
+      - "Notify from a task: notify: restart service"
+      - "Change the config content and re-run — handler should fire"
+      - "Handlers only run once per play, even if notified multiple times"
+
+validation_steps:
+  - "ansible is installed"
+  - "community.docker collection is installed"
+  - "Docker node containers are running"
+  - "ansible all -m ping succeeds against both nodes"
+
+grading_rules:
+  - check: "ansible --version &>/dev/null && echo pass"
+    points: 15
+  - check: "ansible-galaxy collection list 2>/dev/null | grep -q 'community.docker'"
+    points: 20
+  - check: "docker ps --format '{{.Names}}' 2>/dev/null | grep -q node1"
+    points: 20
+  - check: "docker ps --format '{{.Names}}' 2>/dev/null | grep -q node2"
+    points: 20
+  - check: "[ -f ~/ansible-lab/site.yml ] && grep -q 'hosts:' ~/ansible-lab/site.yml && echo pass"
+    points: 25
+
+cleanup_steps:
+  - "docker stop node1 node2 2>/dev/null || true"
+  - "docker rm node1 node2 2>/dev/null || true"
+  - "rm -rf ~/ansible-lab || true"
+
+related_docs:
+  - "../../../14-configuration-management/README.md"
+
+related_cloud_services:
+  - "AWS Systems Manager Automation"
+  - "Azure Automation"
+  - "GCP Config Management"
+
+local_only: true
+cost_warning: null
+safety_warning: null

@@ -1,0 +1,125 @@
+id: terraform-basics
+title: "Terraform: Infrastructure as Code Fundamentals"
+description: >
+  Learn Terraform/OpenTofu fundamentals by writing configuration that provisions
+  real local Docker infrastructure. Practice init, plan, apply, state management,
+  variables, outputs, and modules — all without a cloud account using the
+  Docker provider.
+
+difficulty: beginner
+estimated_time: "60 minutes"
+category: terraform-opentofu
+
+prerequisites:
+  - "terraform OR tofu installed: terraform version OR tofu version"
+  - "Docker running"
+
+tools_required:
+  - terraform
+  - docker
+
+docker_profiles: []
+
+ports_used:
+  - 8765
+
+learning_objectives:
+  - Write Terraform configuration files (providers, resources, variables, outputs)
+  - Run the init → plan → apply → destroy workflow
+  - Understand Terraform state and the .tfstate file
+  - Use input variables and output values
+  - Import an existing resource into Terraform state
+  - Write a simple module and reference it
+
+tasks:
+  - id: init-project
+    description: "Create a Terraform project directory with providers.tf and run terraform init"
+    hints:
+      - "mkdir ~/tf-lab && cd ~/tf-lab"
+      - "Create providers.tf with: terraform { required_providers { docker = { source = 'kreuzwerker/docker', version = '~> 3.0' } } }"
+      - "Also add: provider 'docker' {}"
+      - "Run: terraform init"
+      - "You should see: 'Terraform has been successfully initialized'"
+
+  - id: write-resource
+    description: "Write a main.tf that pulls nginx:alpine and creates a Docker container named 'lab-nginx'"
+    hints:
+      - "Resource: docker_image with name = 'nginx:alpine'"
+      - "Resource: docker_container with image, name, ports { internal=80, external=8765 }"
+      - "See provider docs: https://registry.terraform.io/providers/kreuzwerker/docker/latest"
+      - "Run: terraform plan (should show +2 to add)"
+
+  - id: apply
+    description: "Apply the configuration and verify the container is running"
+    hints:
+      - "terraform apply  (type 'yes' to confirm)"
+      - "OR: terraform apply -auto-approve"
+      - "Verify: docker ps | grep lab-nginx"
+      - "Test: curl http://localhost:8765"
+
+  - id: inspect-state
+    description: "Inspect the Terraform state file to understand what it tracks"
+    hints:
+      - "cat terraform.tfstate | python3 -m json.tool | head -50"
+      - "List resources: terraform state list"
+      - "Show a resource: terraform state show docker_container.lab_nginx"
+      - "State records the real resource ID and all attributes"
+
+  - id: variables-and-outputs
+    description: "Refactor using variables.tf (container name, port) and outputs.tf (container ID, IP)"
+    hints:
+      - "variables.tf: variable 'container_name' { default = 'lab-nginx' }"
+      - "Reference in main.tf: name = var.container_name"
+      - "outputs.tf: output 'container_id' { value = docker_container.lab_nginx.id }"
+      - "Run: terraform apply, then: terraform output"
+
+  - id: change-and-plan
+    description: "Change the external port from 8765 to 8766 and observe what terraform plan shows"
+    hints:
+      - "Edit variables.tf or main.tf to change the port"
+      - "Run: terraform plan"
+      - "See the ~ (update in-place) or -/+ (replace) symbol"
+      - "Containers often require replacement when port mappings change"
+
+  - id: destroy
+    description: "Destroy all Terraform-managed resources"
+    hints:
+      - "terraform destroy"
+      - "OR: terraform destroy -auto-approve"
+      - "Verify: docker ps | grep lab-nginx (should be empty)"
+      - "terraform.tfstate should show empty resources"
+
+validation_steps:
+  - "terraform or tofu is installed"
+  - "terraform init succeeds"
+  - "terraform apply creates lab-nginx container"
+  - "curl http://localhost:8765 returns nginx response"
+
+grading_rules:
+  - check: "(terraform version || tofu version) 2>/dev/null | grep -qiE 'terraform|opentofu'"
+    points: 15
+  - check: "docker ps --format '{{.Names}}' 2>/dev/null | grep -q lab-nginx"
+    points: 30
+  - check: "curl -sf http://localhost:8765 2>/dev/null | grep -qi 'nginx\\|html'"
+    points: 30
+  - check: "[ -f ~/tf-lab/terraform.tfstate ] && python3 -c \"import json; d=json.load(open('$HOME/tf-lab/terraform.tfstate')); exit(0 if d.get('resources') else 1)\" 2>/dev/null && echo pass"
+    points: 25
+
+cleanup_steps:
+  - "cd ~/tf-lab && terraform destroy -auto-approve 2>/dev/null || true"
+  - "docker stop lab-nginx 2>/dev/null || true"
+  - "docker rm lab-nginx 2>/dev/null || true"
+  - "rm -rf ~/tf-lab || true"
+
+related_docs:
+  - "../../../13-iac/README.md"
+
+related_cloud_services:
+  - "Terraform Cloud"
+  - "AWS CloudFormation"
+  - "Azure ARM/Bicep"
+  - "GCP Deployment Manager"
+
+local_only: true
+cost_warning: null
+safety_warning: null

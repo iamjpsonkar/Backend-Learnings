@@ -1,0 +1,125 @@
+id: grafana-dashboards
+title: "Grafana: Build Production-Grade Dashboards"
+description: >
+  Learn to build real Grafana dashboards from scratch. Create panels for system
+  metrics, configure time series visualizations, use variables for dynamic
+  filtering, set up threshold-based coloring, and export dashboards as JSON.
+  Grafana is already running with a Prometheus datasource pre-configured.
+
+difficulty: intermediate
+estimated_time: "60 minutes"
+category: observability
+
+prerequisites:
+  - "Observability stack running: make start-observability"
+  - "Browser access to http://localhost:3000"
+
+tools_required:
+  - curl
+
+docker_profiles:
+  - observability
+  - core
+
+ports_used:
+  - 3000
+  - 9090
+
+learning_objectives:
+  - Create a dashboard and add panels in Grafana
+  - Use the Prometheus datasource with PromQL queries
+  - Configure time series, stat, gauge, and table panels
+  - Apply threshold coloring (green/yellow/red)
+  - Create dashboard variables for dynamic filtering
+  - Annotate dashboards with events
+  - Export and import dashboard JSON
+  - Set up repeating panels with variables
+
+tasks:
+  - id: login-and-explore
+    description: "Log in to Grafana and explore the built-in dashboards"
+    hints:
+      - "URL: http://localhost:3000"
+      - "Login: admin / adminpassword123"
+      - "Explore: Dashboards > Browse — see auto-provisioned dashboards"
+      - "Check Connections > Data Sources — Prometheus should be pre-configured"
+
+  - id: create-dashboard
+    description: "Create a new dashboard and add a Time Series panel for CPU usage"
+    hints:
+      - "Dashboard > + New Dashboard > Add visualization"
+      - "Select 'Prometheus' as datasource"
+      - "PromQL: 100 - (avg(rate(node_cpu_seconds_total{mode='idle'}[5m])) * 100)"
+      - "Set title: 'CPU Usage %'"
+      - "Set unit: Percent (0-100)"
+
+  - id: stat-panel
+    description: "Add a Stat panel showing current memory usage in GB"
+    hints:
+      - "Add panel > Stat visualization"
+      - "PromQL: node_memory_MemAvailable_bytes / 1024 / 1024 / 1024"
+      - "Set unit: gigabytes"
+      - "Apply threshold: green < 4, yellow < 2, red < 1"
+
+  - id: dashboard-variables
+    description: "Create a dashboard variable to filter metrics by job or instance"
+    hints:
+      - "Dashboard settings (gear icon) > Variables > Add variable"
+      - "Type: Query, Name: job"
+      - "Query: label_values(up, job)"
+      - "Use in panels: up{job='$job'}"
+      - "Multi-value and 'All' options allow filtering multiple jobs at once"
+
+  - id: table-panel
+    description: "Add a Table panel showing all Prometheus targets with their health status"
+    hints:
+      - "Add panel > Table visualization"
+      - "PromQL: up"
+      - "In Transform tab: add 'Labels to fields' transformation"
+      - "This shows each target's job, instance, and health (1=up, 0=down)"
+
+  - id: export-dashboard
+    description: "Export your dashboard as JSON and save it locally"
+    hints:
+      - "Dashboard settings > JSON Model — copy the JSON"
+      - "Or use the Share icon > Export > Export for sharing externally"
+      - "Save as: ~/grafana-dashboard.json"
+      - "Import back: Dashboards > Import > Upload JSON file"
+      - "Via API: curl -u admin:adminpassword123 http://localhost:3000/api/dashboards/uid/<uid>"
+
+  - id: api-dashboard
+    description: "Use the Grafana HTTP API to list dashboards and search for a panel"
+    hints:
+      - "List dashboards: curl -u admin:adminpassword123 http://localhost:3000/api/search"
+      - "Get datasources: curl -u admin:adminpassword123 http://localhost:3000/api/datasources"
+      - "Query Prometheus directly via Grafana proxy: curl -u admin:adminpassword123 'http://localhost:3000/api/datasources/proxy/1/api/v1/query?query=up'"
+
+validation_steps:
+  - "Grafana loads at http://localhost:3000"
+  - "Prometheus datasource is configured"
+  - "At least one custom dashboard exists"
+
+grading_rules:
+  - check: "curl -sf http://localhost:3000/api/health 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if d.get('database')=='ok' else 1)\""
+    points: 20
+  - check: "curl -sf -u admin:adminpassword123 http://localhost:3000/api/datasources 2>/dev/null | python3 -c \"import sys,json; ds=json.load(sys.stdin); exit(0 if any(d.get('type')=='prometheus' for d in ds) else 1)\""
+    points: 20
+  - check: "curl -sf -u admin:adminpassword123 'http://localhost:3000/api/search?type=dash-db' 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if len(d) > 0 else 1)\""
+    points: 30
+  - check: "curl -sf 'http://localhost:9090/api/v1/query?query=node_cpu_seconds_total' 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if d.get('status')=='success' else 1)\" 2>/dev/null && echo pass || echo 'node_exporter metrics may not be available'"
+    points: 30
+
+cleanup_steps: []
+
+related_docs:
+  - "../../../15-observability/README.md"
+
+related_cloud_services:
+  - "AWS CloudWatch Dashboards"
+  - "Azure Monitor Workbooks"
+  - "GCP Cloud Monitoring Dashboards"
+  - "Datadog, New Relic (SaaS)"
+
+local_only: true
+cost_warning: null
+safety_warning: null

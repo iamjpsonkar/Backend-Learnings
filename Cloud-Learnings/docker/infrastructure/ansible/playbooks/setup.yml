@@ -1,0 +1,70 @@
+---
+# Sample Ansible playbook for cloud-learnings lab
+# Demonstrates: tasks, variables, handlers, templates
+
+- name: Configure database containers
+  hosts: postgres
+  gather_facts: false
+
+  vars:
+    db_name: "{{ postgres_db | default('labdb') }}"
+    app_user: "{{ postgres_user | default('labuser') }}"
+
+  tasks:
+    - name: Check PostgreSQL is accepting connections
+      community.postgresql.postgresql_ping:
+        db: "{{ db_name }}"
+        login_user: "{{ app_user }}"
+        login_password: "{{ postgres_password | default('labpassword123') }}"
+      register: pg_ping
+      ignore_errors: true
+
+    - name: Print connection status
+      debug:
+        msg: "PostgreSQL connection: {{ 'OK' if pg_ping is success else 'FAILED' }}"
+
+    - name: Create a sample schema
+      community.postgresql.postgresql_query:
+        db: "{{ db_name }}"
+        login_user: "{{ app_user }}"
+        login_password: "{{ postgres_password | default('labpassword123') }}"
+        query: "CREATE SCHEMA IF NOT EXISTS ansible_managed"
+      when: pg_ping is success
+
+    - name: Create a managed table
+      community.postgresql.postgresql_query:
+        db: "{{ db_name }}"
+        login_user: "{{ app_user }}"
+        login_password: "{{ postgres_password | default('labpassword123') }}"
+        query: |
+          CREATE TABLE IF NOT EXISTS ansible_managed.config (
+            key VARCHAR(100) PRIMARY KEY,
+            value TEXT,
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+      when: pg_ping is success
+
+    - name: Insert configuration
+      community.postgresql.postgresql_query:
+        db: "{{ db_name }}"
+        login_user: "{{ app_user }}"
+        login_password: "{{ postgres_password | default('labpassword123') }}"
+        query: >
+          INSERT INTO ansible_managed.config(key, value)
+          VALUES ('managed_by', 'ansible')
+          ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()
+      when: pg_ping is success
+
+    - name: Verify configuration inserted
+      community.postgresql.postgresql_query:
+        db: "{{ db_name }}"
+        login_user: "{{ app_user }}"
+        login_password: "{{ postgres_password | default('labpassword123') }}"
+        query: "SELECT key, value FROM ansible_managed.config"
+      register: config_rows
+      when: pg_ping is success
+
+    - name: Display configuration
+      debug:
+        var: config_rows.query_result
+      when: pg_ping is success and config_rows is defined

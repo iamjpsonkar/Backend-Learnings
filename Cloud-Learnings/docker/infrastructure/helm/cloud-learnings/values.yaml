@@ -1,0 +1,69 @@
+# Default values for cloud-learnings chart.
+# Override with: helm install -f my-values.yaml
+
+replicaCount: 1
+
+image:
+  repository: cloud-learnings-lab-sample-api
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: sample-api.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+env:
+  APP_PORT: "8000"
+  LOG_LEVEL: "INFO"
+  OTEL_ENABLED: "false"
+
+# Database connection (override in environment-specific values)
+database:
+  host: postgres
+  port: 5432
+  name: appdb
+  # password set via secret
+
+# Redis connection
+redis:
+  host: redis
+  port: 6379
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 10
