@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h3>Fizz (divide by 3) Buzz(divide by 5) Game</h3>
+    <ul>
+        {% for n in range(1,100) %} 
+        {% if n is Divide(3) and n is Divide(5) %}
+        <li>FizzBuzz</li>
+        {% elif n is Divide(3) %}
+        <li>Fizz</li>
+        {% elif n is Divide(5) %}
+        <li>Buzz</li>
+        {% else %}
+        <li>{{ n }}</li>
+        {% endif %} 
+        {% endfor %}
+    </ul>
+</body>
+</html>

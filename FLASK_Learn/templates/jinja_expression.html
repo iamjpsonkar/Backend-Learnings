@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <table style="border: solid black 2px;">
+        <tr style="border: solid black 2px;">
+            <th style="border: solid black 2px;">Name</th>
+            <th style="border: solid black 2px;">Fav Fruit</th>
+            <th style="border: solid black 2px;">Quantity</th>
+            <th style="border: solid black 2px;">Price</th>
+            <th style="border: solid black 2px;">Total amount</th>
+        </tr>
+        {% for x in data %} 
+        <tr style="border: solid black 2px;">
+            <td style="border: solid black 2px;">{{ x['name'] }} </td>
+            <td style="border: solid black 2px;">{{ x['f_fruit'] }} </td>
+            <td style="border: solid black 2px;">{{ x['qty'] }} </td>
+            <td style="border: solid black 2px;">{{ price[x['f_fruit']] }} </td>
+            <td style="border: solid black 2px;">{{ price[x['f_fruit']]*x['qty'] }} </td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    {% set t_val=2 %}
+    <table style="border: solid black 2px;">
+        <tr style="border: solid black 2px;">
+            <th style="border: solid black 2px;">Table of {{ t_val }}</th>
+        </tr>
+        {% for i in range(1,11) %}
+        <tr  style="border: solid black 2px;">
+            <td style="border: solid black 2px;">{{ t_val*i }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

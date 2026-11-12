@@ -1,0 +1,13 @@
+{% extends 'jinja_inheritance_base.html' %}
+
+{% from "macro_todo_li.jinja2" import todo_li %}
+
+{% block todo_block %} 
+    <h2>Todos using extend block</h2>
+    <br/>
+    <ul>
+        {% for x in todos %} 
+        {{ todo_li(x[0],x[1])}}
+        {% endfor %}
+    </ul>
+{% endblock %}

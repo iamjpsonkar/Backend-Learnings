@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    {% set todos_cnt = todos | length %}
+    {% if todos_cnt > 0 %} 
+        <h3>You have {{ todos_cnt }} task in your todos</h3>
+        <ul>
+            {% for x in todos %} 
+                <li>{{ x }}</li>
+            {% endfor %} 
+        </ul>
+        <br/>
+        <h4>joined task </h4>
+        {% set joined_task = todos | join(" | ") %}
+        <p>{{ joined_task }}</p>
+    {% else %} 
+        <h3>No task in your todos</h3>
+    {% endif %}
+        
+</body>
+</html>
