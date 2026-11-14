@@ -150,7 +150,7 @@ Docker provides tooling to build images and run containers. Common concepts:
 - **Volume:** Provides persistent or shared container storage.
 - **Network:** Connects containers and external systems.
 
-![Docker engine architecture](./assets/docker_engine_architecture.png)
+![Docker engine architecture](./assets/docker_engine_architecture.svg)
 
 Typical image and container workflow:
 
@@ -206,13 +206,13 @@ Kubernetes does not automatically make an application highly available, secure, 
 - **ReplicaSet:** Maintains a desired number of matching Pods.
 - **Service:** Provides a stable endpoint for Pods selected by labels.
 
-![Deployment, ReplicaSet, and Pod relationship](./assets/deployment_replicaset_pod_relationship.png)
+![Deployment, ReplicaSet, and Pod relationship](./assets/deployment_replicaset_pod_relationship.svg)
 
 ## 3. Kubernetes architecture
 
 A cluster consists of a control plane and one or more worker nodes. The control plane exposes the API and manages cluster state; worker nodes run application Pods.
 
-![Kubernetes cluster architecture](./assets/kubernetes_architecture_overview.png)
+![Kubernetes cluster architecture](./assets/kubernetes_architecture_overview.svg)
 
 ### Control plane components
 
@@ -603,7 +603,7 @@ A Deployment selector must match the labels in its Pod template. Selectors shoul
 
 Pods are replaceable and their IP addresses can change. A Service provides a stable virtual endpoint and selects backend Pods using labels.
 
-![Kubernetes Service traffic flow](./assets/kubernetes_service_ingress_flow.png)
+![Kubernetes Service traffic flow](./assets/kubernetes_service_ingress_flow.svg)
 
 ### Service types
 
