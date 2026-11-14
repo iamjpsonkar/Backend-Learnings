@@ -1,0 +1,8 @@
+apiVersion: learning.example.com/v1
+kind: Student
+metadata:
+  name: student-one
+  namespace: demo
+spec:
+  fullName: Example Student
+  level: 8
