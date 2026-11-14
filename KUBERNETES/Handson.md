@@ -142,43 +142,6 @@ kubectl get svc,endpointslices -n demo
 
 Introduce one fault at a time (wrong image name, incorrect label selector, invalid container port, or too-high resource request), observe the failure, and fix it.
 
-## 9. Cleanup
-
-Delete only the resources created for this lab:
-
-```bash
-kubectl delete -n demo -f services/clusterip.yaml --ignore-not-found
-kubectl delete -n demo -f services/nodeport.yaml --ignore-not-found
-kubectl delete -n demo -f services/lb.yaml --ignore-not-found
-kubectl delete -n demo -f services/externalname.yaml --ignore-not-found
-kubectl delete -n demo -f services/deploy.yaml --ignore-not-found
-kubectl delete -n demo -f deployment/deploy.yaml --ignore-not-found
-kubectl delete -n demo -f replication/rc.yaml --ignore-not-found
-kubectl delete -n demo -f replication/rs.yaml --ignore-not-found
-kubectl delete -n demo -f kubectl_pod_creation/pod.yaml --ignore-not-found
-kubectl delete pod curl-client -n demo --ignore-not-found
-```
-
-Delete the namespace only after verifying that it contains no resources you need:
-
-```bash
-kubectl get all -n demo
-kubectl delete namespace demo
-```
-
-Delete a kind cluster only when you no longer need it:
-
-```bash
-kind delete cluster --name k8s-lab
-```
-
-## 10. Continue through the full roadmap
-
-Use [README.md](README.md) for the full topic checklist and [notes.md](notes.md) for the detailed concept guide. Follow the [CKA-2024 course](https://github.com/piyushsachdeva/CKA-2024/) for day-wise lectures, notes, and assignments.
-
-Do not mark a topic complete until you can explain it, implement it, verify it, and troubleshoot it independently.
-
-
 ## 11. Configuration: ConfigMaps and Secrets
 
 The example Pod mounts an HTML file from a ConfigMap and exposes ConfigMap/Secret keys as environment variables.
@@ -318,3 +281,81 @@ helm template demo-web helm/nginx
 ```
 
 An Ingress object requires an installed Ingress controller. A Gateway API resource requires Gateway API CRDs and a compatible controller. The manifest alone does not create a working data plane.
+
+## 17. Cleanup
+
+Run cleanup after completing the exercises you intend to keep. Confirm the active context first. These commands remove the lab resources in the `demo` and `secure-demo` namespaces.
+
+```bash
+kubectl config current-context
+
+# Workloads and Services
+kubectl delete -f services/clusterip.yaml --ignore-not-found
+kubectl delete -f services/nodeport.yaml --ignore-not-found
+kubectl delete -f services/lb.yaml --ignore-not-found
+kubectl delete -f services/externalname.yaml --ignore-not-found
+kubectl delete -f deployment/deploy.yaml --ignore-not-found
+kubectl delete -f kubectl_pod_creation/pod.yaml --ignore-not-found
+kubectl delete -f replication/rc.yaml --ignore-not-found
+kubectl delete -f replication/rs.yaml --ignore-not-found
+kubectl delete -f workloads/job.yaml --ignore-not-found
+kubectl delete -f workloads/cronjob.yaml --ignore-not-found
+kubectl delete -f workloads/daemonset.yaml --ignore-not-found
+kubectl delete -f workloads/statefulset.yaml --ignore-not-found
+kubectl delete -f workloads/headless-service.yaml --ignore-not-found
+
+# Configuration, security, and networking
+kubectl delete -f configuration/configured-pod.yaml --ignore-not-found
+kubectl delete -f configuration/configmap.yaml --ignore-not-found
+kubectl delete -f configuration/secret.yaml --ignore-not-found
+kubectl delete -f security/rolebinding.yaml --ignore-not-found
+kubectl delete -f security/role.yaml --ignore-not-found
+kubectl delete -f security/serviceaccount.yaml --ignore-not-found
+kubectl delete -f security/restricted-pod.yaml --ignore-not-found
+kubectl delete -f security/pod-security-namespace.yaml --ignore-not-found
+kubectl delete -f networking/allow-frontend.yaml --ignore-not-found
+kubectl delete -f networking/default-deny-ingress.yaml --ignore-not-found
+kubectl delete -f networking/ingress.yaml --ignore-not-found
+
+# Scheduling and storage
+kubectl delete -f scheduling/resources-pod.yaml --ignore-not-found
+kubectl delete -f scheduling/node-selector-pod.yaml --ignore-not-found
+kubectl delete -f scheduling/affinity-pod.yaml --ignore-not-found
+kubectl delete -f scheduling/toleration-pod.yaml --ignore-not-found
+kubectl delete -f scheduling/priority-pod.yaml --ignore-not-found
+kubectl delete -f scheduling/priorityclass.yaml --ignore-not-found
+kubectl delete -f scheduling/limitrange.yaml --ignore-not-found
+kubectl delete -f scheduling/resourcequota.yaml --ignore-not-found
+kubectl delete -f storage/pvc-pod.yaml --ignore-not-found
+kubectl delete -f storage/pvc.yaml --ignore-not-found
+
+# Packaging and custom API
+helm uninstall demo-web -n demo 2>/dev/null || true
+kubectl delete -k kustomize/overlays/dev --ignore-not-found
+kubectl delete -f custom-resources/student.yaml --ignore-not-found
+kubectl delete -f custom-resources/student-crd.yaml --ignore-not-found
+
+# Temporary client Pod
+kubectl delete pod curl-client frontend-client -n demo --ignore-not-found
+
+# Remove test node labels/taints (replace with the node you modified)
+kubectl label node <node-name> disktype-
+kubectl taint node <node-name> dedicated=cka:NoSchedule-
+
+# Inspect remaining namespaced resources before deleting the lab namespace
+kubectl get all -n demo
+kubectl delete namespace demo
+```
+
+The placeholder `<node-name>` must be replaced with the actual node you labeled or tainted. The namespace deletion also deletes namespaced resources that may not appear in `kubectl get all`. Inspect PVC/PV reclaim behavior before deleting persistent data. Remove the kind cluster only when you no longer need it:
+
+```bash
+kind delete cluster --name k8s-lab
+```
+
+
+## 18. Continue through the full roadmap
+
+Use [ROADMAP.md](ROADMAP.md) for the complete topic checklist and [notes.md](notes.md) for the detailed beginner concept guide. Follow the [CKA-2024 course](https://github.com/piyushsachdeva/CKA-2024/) for day-wise lectures, notes, and assignments.
+
+Do not mark a topic complete until you can explain it, implement it, verify it, and troubleshoot it independently.
