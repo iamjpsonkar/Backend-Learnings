@@ -1,431 +1,466 @@
-> **Learning roadmap:** See [ROADMAP.md](ROADMAP.md) for the complete CKA-oriented topic checklist, recommended study flow, and hands-on links.  
-> **Practice lab:** See [Handson.md](Handson.md) for the guided local-cluster exercises.
+# Kubernetes — Practical Learning Notes
 
-# Docker
+A structured, hands-on guide to Kubernetes, from container fundamentals and cluster architecture to workloads, networking, storage, security, administration, and troubleshooting.
 
-## What is Docker
-![What is Docker](./assets/what_is_docker.png)
+This directory is part of the [Learnings](https://github.com/iamjpsonkar/Learnings) repository. Treat it as a working notebook: understand a concept, write a manifest, apply it to a cluster, inspect the result, introduce a controlled failure, and document what you learned.
 
-## Container vs VMs
-![alt text](./assets/container_vs_vms.png)
+> **Learning sequence:** Docker fundamentals → Kubernetes architecture → local cluster → kubectl and YAML → Pods and controllers → Services and networking → configuration and security → storage → cluster operations and troubleshooting.
 
-## Challenges with the non-containerized applications
-![Container vs VMs](./assets/challenges_with_non_containerzeid_app.png)
+## Contents
 
-## How Docker solves the challenges
-![alt text](./assets/docker_way.png)
+- [Learning resources](#learning-resources)
+- [How to use these notes](#how-to-use-these-notes)
+- [Prerequisites and lab setup](#prerequisites-and-lab-setup)
+- [1. Container fundamentals](#1-container-fundamentals)
+- [2. What Kubernetes solves](#2-what-kubernetes-solves)
+- [3. Kubernetes architecture](#3-kubernetes-architecture)
+- [4. Install a local cluster](#4-install-a-local-cluster)
+- [5. kubectl fundamentals](#5-kubectl-fundamentals)
+- [6. YAML and Kubernetes manifests](#6-yaml-and-kubernetes-manifests)
+- [7. Pods](#7-pods)
+- [8. Labels, selectors, and namespaces](#8-labels-selectors-and-namespaces)
+- [9. ReplicaSets and Deployments](#9-replicasets-and-deployments)
+- [10. Services and service discovery](#10-services-and-service-discovery)
+- [11. Configuration and secrets](#11-configuration-and-secrets)
+- [12. Workloads and scheduling](#12-workloads-and-scheduling)
+- [13. Networking](#13-networking)
+- [14. Storage](#14-storage)
+- [15. Security and access control](#15-security-and-access-control)
+- [16. Cluster administration](#16-cluster-administration)
+- [17. Troubleshooting](#17-troubleshooting)
+- [18. Helm, Kustomize, CRDs, and operators](#18-helm-kustomize-crds-and-operators)
+- [19. Practical exercises](#19-practical-exercises)
+- [Quick reference](#quick-reference)
+- [Repository map](#repository-map)
+- [Important notes](#important-notes)
 
-## Docker flow
-![How Docker solves the challenges](./assets/docker_flow.png)
+## Learning resources
 
-## Docker architecture
-![Docker architecture](./assets/docker_architecture.png)
+| Resource | Purpose |
+|---|---|
+| [Piyush Sachdeva — CKA-2024 repository](https://github.com/piyushsachdeva/CKA-2024/) | Day-wise notes, commands, YAML, hands-on assignments, and extended CKA topics |
+| [40 Days of Kubernetes video playlist](https://www.youtube.com/watch?v=6_gMoe7Ik8k&list=PLl4APkPHzsUUOkOv3i62UidrLmSB8DcGC) | Main video learning sequence |
+| [Official Kubernetes documentation](https://kubernetes.io/docs/) | Current concepts, APIs, installation, and administration |
+| [Kubernetes concepts](https://kubernetes.io/docs/concepts/) | Workloads, networking, storage, configuration, and security |
+| [kubectl reference](https://kubernetes.io/docs/reference/kubectl/) | CLI command reference |
+| [Official CKA curriculum](https://github.com/cncf/curriculum) | Exam objectives and domain coverage |
 
-# Fundamentals of Kubernetes
+The upstream course repository is named `CKA-2024`, but its README may be updated as the curriculum evolves. The original Day 1–40 videos were recorded against older Kubernetes versions. Use the updated upstream notes and official documentation to verify commands and APIs for your cluster and exam.
 
-## Kubernetes architecture
-![Kubernetes architecture](./assets/kubernetes_architecture.png)
+## How to use these notes
 
-## Master/Control plane Node V/s Worker Node ( Node is nothing but a Virtual machine)
-![Master Node vs Worker Node](./assets/master_vs_worker.png)
+For each topic, follow the same loop:
 
-## ApiServer :- Client interacts with the cluster using ApiServer
-![API Server: user interaction](./assets/apiserver_user_interaction.png)
+1. **Understand:** Identify the problem the Kubernetes feature solves.
+2. **Read:** Study the explanation and inspect the example manifest.
+3. **Predict:** Explain what objects should be created and how they relate.
+4. **Apply:** Run the commands against your lab cluster.
+5. **Verify:** Inspect resource state, events, logs, endpoints, and application behavior.
+6. **Break:** Introduce one controlled failure.
+7. **Fix:** Restore the intended state and verify it again.
+8. **Document:** Record commands, observations, errors, and fixes.
 
-## Scheduler: decide which pod to be scheduled on which node based on different factors
-![Scheduler](./assets/scheduler.png)
+A successful `kubectl apply` only confirms that the API accepted an object. It does not prove that a Pod is Ready, a Service has endpoints, an application is reachable, or data is persistent.
 
-## Controller Manager
-![Controller Manager](./assets/controller_manager.png)
+Track the full syllabus in [ROADMAP.md](ROADMAP.md), follow [Handson.md](Handson.md) for guided practical work, and use [notes.md](notes.md) for the longer beginner guide. The previous README content is preserved in [REFERENCE-NOTES.md](REFERENCE-NOTES.md).
 
-## ETCD Server - Key value database that stores the cluster state and configuration
-![ETCD Server](./assets/etcd_server.png)
+## Prerequisites and lab setup
 
-## Kubelet - Node-level agent that helps container management and receives instructions from Api server
-![Kubelet](./assets/kubelet.png)
+### Basic prerequisites
 
-## kube-proxy - helps implement Service networking and forwards Service traffic to backend Pods
-![Kube procy](./assets/kube_proxy.png)
+- Basic Linux shell usage and file permissions.
+- Basic networking: IP addresses, ports, DNS, HTTP, and TLS.
+- Container concepts (covered below before Kubernetes).
+- A machine with enough CPU and memory for a local cluster.
 
+### Tools
 
-# Installation and Basic commands
+| Tool | Purpose | Documentation |
+|---|---|---|
+| Docker or compatible runtime | Run local containers and support kind | [Docker Engine](https://docs.docker.com/engine/install/) |
+| kubectl | Communicate with the Kubernetes API | [Install kubectl](https://kubernetes.io/docs/tasks/tools/) |
+| kind | Create local single-node or multi-node clusters | [kind quick start](https://kind.sigs.k8s.io/docs/user/quick-start/) |
+| Minikube | Run a local Kubernetes cluster | [Minikube start](https://minikube.sigs.k8s.io/docs/start/) |
+| kubeadm | Build and administer clusters on Linux VMs | [kubeadm guide](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/) |
+| Helm | Package and manage Kubernetes applications | [Helm installation](https://helm.sh/docs/intro/install/) |
 
-https://kubernetes.io/docs/tasks/tools/
+### Choose a lab
 
-## Install kind
+| Environment | Recommended use |
+|---|---|
+| kind or Minikube | Pods, Deployments, Services, namespaces, configuration, scheduling, and application debugging |
+| Multi-node kind | Node placement, affinity, taints, and multi-node behavior |
+| kubeadm on Linux VMs | Cluster installation, certificates, node maintenance, upgrades, etcd backup/restore, and control-plane troubleshooting |
 
-https://kind.sigs.k8s.io/docs/user/quick-start/#installation
+For most exercises here, kind is sufficient. kubeadm exercises require Linux virtual machines and direct access to the nodes.
 
-```sh
-[ $(uname -m) = x86_64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.33.0/kind-linux-amd64
+### Create a kind cluster
 
-chmod +x ./kind
+Use the existing [multi-node kind configuration](kind_cluster/kind-example-config.yaml):
 
-sudo mv ./kind /usr/local/bin/kind
+```bash
+kind create cluster --name k8s-lab --config kind_cluster/kind-example-config.yaml
+kubectl config current-context
+kubectl cluster-info
+kubectl get nodes -o wide
 ```
 
-### verify installation
-```sh
-kind version
-```
-```txt
-kind v0.33.0 go1.26.7 linux/amd64
-```
+This creates a control-plane node and two workers. It does not publish a NodePort to your host.
 
-## Install kubernetes
+For the NodePort exercise, use [services/kind.yaml](services/kind.yaml), which maps host port 30001:
 
-https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/
-
-### verify installation
-```sh
-kubectl version
-```
-```txt
-Client Version: v1.37.2
-Kustomize Version: v5.8.1
-Server Version: v1.37.0
+```bash
+kind create cluster --name k8s-nodeport --config services/kind.yaml
+kubectl get nodes
 ```
 
-## kind create cluster
-Pick Image from https://github.com/kubernetes-sigs/kind/releases
+Check for existing clusters before creating another:
 
-```sh
-kind create cluster --image kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 --name cka-cluster1
-```
-```txt
-Creating cluster "cka-cluster1" ...
- ✓ Ensuring node image (kindest/node:v1.37.0) 🖼️ 
- ✓ Preparing nodes 📦  
- ✓ Writing configuration 📜 
- ✓ Starting control-plane 🕹️ 
- ✓ Installing CNI 🔌 
- ✓ Installing StorageClass 💾 
-Set kubectl context to "kind-cka-cluster1"
-You can now use your cluster with:
-
-kubectl cluster-info --context kind-cka-cluster1
-
-Have a nice day! 👋
-```
-
-### Verify cluster creation
-```sh
+```bash
 kind get clusters
 ```
 
-```sh
-kubectl cluster-info --context kind-cka-cluster1
-```
-```txt
-Kubernetes control plane is running at https://127.0.0.1:44835
-CoreDNS is running at https://127.0.0.1:44835/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+Delete only a lab cluster you no longer need:
 
-To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+```bash
+kind delete cluster --name k8s-lab
 ```
 
-### get nodes
-```sh
-kubectl get nodes
-```
-```txt
-NAME                         STATUS   ROLES           AGE     VERSION
-cka-cluster1-control-plane   Ready    control-plane   8m48s   v1.37.0
-```
+Pin Kubernetes node images when reproducibility matters. Do not assume a version in an old command is still current.
 
-### multi node cluster createion
-```sh
-kind create cluster --image kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 --name cka-cluster2 --config kind-example-config.yaml
-```
-```txt
-Creating cluster "cka-cluster2" ...
- ✓ Ensuring node image (kindest/node:v1.37.0) 🖼️ 
- ✓ Preparing nodes 📦 📦 📦  
- ✓ Writing configuration 📜 
- ✓ Starting control-plane 🕹️ 
- ✓ Installing CNI 🔌 
- ✓ Installing StorageClass 💾 
- ✓ Joining worker nodes 🚜 
-Set kubectl context to "kind-cka-cluster2"
-You can now use your cluster with:
+---
 
-kubectl cluster-info --context kind-cka-cluster2
+## 1. Container fundamentals
 
-Thanks for using kind! 😊
-```
+A container packages an application and its runtime dependencies into an isolated process environment. A container image is the immutable template used to create containers.
 
-#### verify cluster creation
-```sh
-kubectl cluster-info --context kind-cka-cluster2
-```
-```txt
-Kubernetes control plane is running at https://127.0.0.1:38577
-CoreDNS is running at https://127.0.0.1:38577/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+### Containers versus virtual machines
 
-To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+![Containers compared with virtual machines](./assets/container_vs_vms.png)
+
+A virtual machine includes a guest operating system on virtualized hardware. Containers share the host kernel and isolate processes using operating-system primitives. Containers are generally more lightweight, but containers and virtual machines solve different isolation and compatibility problems.
+
+### What Docker provides
+
+Docker provides tooling to build images and run containers. Common concepts:
+
+- **Image:** Read-only template containing application files and metadata.
+- **Container:** Running instance created from an image.
+- **Registry:** Stores and distributes images.
+- **Volume:** Provides persistent or shared container storage.
+- **Network:** Connects containers and external systems.
+
+![Docker engine architecture](./assets/docker_engine_architecture.svg)
+
+Typical image and container workflow:
+
+```bash
+docker build -t hello-app:v1 .
+docker images
+docker run --name hello-app hello-app:v1
+docker ps
+docker logs hello-app
+docker exec -it hello-app sh
+docker stop hello-app
+docker rm hello-app
 ```
 
-#### get nodes
-```sh
-kubectl get nodes
-```
-```txt
-NAME                         STATUS   ROLES           AGE     VERSION
-cka-cluster2-control-plane   Ready    control-plane   2m14s   v1.37.0
-cka-cluster2-worker          Ready    <none>          119s    v1.37.0
-cka-cluster2-worker2         Ready    <none>          119s    v1.37.0
-```
+### Why orchestration is needed
 
+A real application may contain APIs, workers, caches, databases, and multiple replicas distributed across machines. Operators need to schedule, scale, update, connect, monitor, and recover those workloads.
 
-### kubectl get context
-```sh
+![Challenges with non-containerized applications](./assets/challenges_with_non_containerzeid_app.png)
+
+Docker helps build and run containers. Kubernetes orchestrates containerized workloads across a cluster.
+
+![How containerization helps application delivery](./assets/docker_way.png)
+
+![Docker image and container workflow](./assets/docker_flow.png)
+
+![Docker architecture from the original notes](./assets/docker_architecture.png)
+
+## 2. What Kubernetes solves
+
+**Kubernetes is an open-source platform for managing containerized workloads and services.** You declare the state you want, and Kubernetes controllers continually work to make the actual state match that desired state.
+
+| Problem | Kubernetes concept |
+|---|---|
+| A Pod disappears | Controllers create replacement Pods when required |
+| An application needs more instances | Deployments and replica counts |
+| Pod IP addresses change | Services provide stable endpoints |
+| Applications need controlled releases | Deployments and rollout history |
+| Settings differ by environment | ConfigMaps and Secrets |
+| Data must outlive a Pod | Volumes, PVs, PVCs, and StorageClasses |
+| Workloads need separation and policy | Namespaces, RBAC, quotas, and NetworkPolicies |
+| Applications need external HTTP routing | Ingress or Gateway API with a controller |
+| Resources need repeatable packaging | Helm and Kustomize |
+
+Kubernetes does not automatically make an application highly available, secure, or backed up. Those outcomes depend on cluster topology, application design, storage, networking, and operating practices.
+
+### Core mental model
+
+- **Cluster:** The complete Kubernetes environment.
+- **Node:** A physical or virtual machine in the cluster.
+- **Pod:** The smallest deployable Kubernetes unit, containing one or more containers.
+- **Deployment:** Declares desired state for a stateless application and manages ReplicaSets.
+- **ReplicaSet:** Maintains a desired number of matching Pods.
+- **Service:** Provides a stable endpoint for Pods selected by labels.
+
+![Deployment, ReplicaSet, and Pod relationship](./assets/deployment_replicaset_pod_relationship.svg)
+
+## 3. Kubernetes architecture
+
+A cluster consists of a control plane and one or more worker nodes. The control plane exposes the API and manages cluster state; worker nodes run application Pods.
+
+![Kubernetes cluster architecture](./assets/kubernetes_architecture_overview.svg)
+
+### Control plane components
+
+| Component | Responsibility |
+|---|---|
+| `kube-apiserver` | Exposes the Kubernetes API; validates and processes requests |
+| `etcd` | Consistent key-value store for Kubernetes API data |
+| `kube-scheduler` | Selects a suitable node for each unscheduled Pod |
+| `kube-controller-manager` | Runs controllers that reconcile observed state toward desired state |
+| `cloud-controller-manager` | Optional integration with cloud-provider APIs |
+
+### Worker node components
+
+| Component | Responsibility |
+|---|---|
+| `kubelet` | Ensures Pods assigned to the node are running and healthy |
+| Container runtime | Pulls images and starts/stops containers through CRI |
+| `kube-proxy` | Commonly configures Service traffic forwarding; some network implementations replace it |
+
+### What happens when you create a Deployment?
+
+1. `kubectl` sends the request to the API server.
+2. The API server authenticates, authorizes, validates, and stores the desired object.
+3. The Deployment controller creates a ReplicaSet.
+4. The ReplicaSet controller creates Pods.
+5. The scheduler assigns each unscheduled Pod to a suitable node.
+6. The kubelet asks the container runtime to prepare and start containers.
+7. Node and Pod status is reported back through the API.
+
+The scheduler selects the node; it does not start containers itself. The kubelet and container runtime handle node-level execution.
+
+### Component diagrams from the original notes
+
+![Control plane and worker nodes](./assets/master_vs_worker.png)
+
+![API server request flow](./assets/apiserver_user_interaction.png)
+
+![Scheduler responsibilities](./assets/scheduler.png)
+
+![Controller manager](./assets/controller_manager.png)
+
+![etcd data store](./assets/etcd_server.png)
+
+![kubelet](./assets/kubelet.png)
+
+![kube-proxy](./assets/kube_proxy.png)
+
+## 4. Install a local cluster
+
+### Install kubectl
+
+Follow the current [official installation instructions](https://kubernetes.io/docs/tasks/tools/). Do not install kubectl using a copied binary URL unless it matches your operating system and CPU architecture.
+
+Verify:
+
+```bash
+kubectl version --client
 kubectl config get-contexts
 ```
-```txt
-CURRENT   NAME                CLUSTER             AUTHINFO            NAMESPACE
-          kind-cka-cluster1   kind-cka-cluster1   kind-cka-cluster1   
-*         kind-cka-cluster2   kind-cka-cluster2   kind-cka-cluster2   
+
+### Install kind
+
+Follow the [kind installation guide](https://kind.sigs.k8s.io/docs/user/quick-start/#installation). Verify:
+
+```bash
+kind version
+docker version
 ```
 
-### kubectl context switching
-```sh
-kubectl config use-context kind-cka-cluster1
+kind requires a supported container runtime. The runtime must be installed and running before creating a cluster.
+
+### Create and inspect a cluster
+
+```bash
+kind create cluster --name k8s-lab --config kind_cluster/kind-example-config.yaml
+kind get clusters
+kubectl cluster-info --context kind-k8s-lab
+kubectl get nodes -o wide
+kubectl get pods -A
 ```
 
-### Deleting the kind cluster
-```sh
-kind delete cluster --name cka-cluster1
+Example output varies by machine and Kubernetes version. Verify the actual cluster instead of relying on copied output.
+
+### Multi-node cluster
+
+The supplied kind configuration has one control-plane node and two worker nodes:
+
+```bash
+cat kind_cluster/kind-example-config.yaml
+kind create cluster --name k8s-multi --config kind_cluster/kind-example-config.yaml
+kubectl get nodes -o wide
 ```
 
-### kubectl running pod
-```sh
-kubectl run nginx-pod --image=nginx:latest
+### Context switching
+
+```bash
+kubectl config get-contexts
+kubectl config current-context
+kubectl config use-context kind-k8s-multi
 ```
 
-#### Verify pod status
-```sh
+Always confirm the active context before applying or deleting resources.
+
+## 5. kubectl fundamentals
+
+`kubectl` is the command-line client for the Kubernetes API.
+
+### Inspect the API and cluster
+
+```bash
+kubectl cluster-info
+kubectl get nodes
+kubectl get namespaces
+kubectl api-resources
+kubectl api-versions
+kubectl explain pod
+kubectl explain pod.spec.containers
+```
+
+### List resources
+
+```bash
 kubectl get pods
-```
-```txt
-NAME        READY   STATUS              RESTARTS   AGE
-nginx-pod   0/1     ContainerCreating   0          7s
-```
-
-
-
-## Kubectl Cheatsheet
-https://kubernetes.io/docs/reference/kubectl/quick-reference/
-
-
-### get pods
-```sh
-kubectl get pods
-```
-
-### get services
-```sh
+kubectl get pods -A
+kubectl get pods -o wide
+kubectl get deployments
+kubectl get replicasets
 kubectl get services
+kubectl get all -n default
 ```
 
-### get deployment
-```sh
-kubectl get deployment
+Note: `kubectl get all` is a convenience grouping, not literally every resource type in the API.
+
+### Inspect an object
+
+```bash
+kubectl describe pod <pod-name>
+kubectl get pod <pod-name> -o yaml
+kubectl get pod <pod-name> -o json
+kubectl get events --sort-by=.metadata.creationTimestamp
 ```
 
-### get replicase
-```sh
-kubectl get replicaset
+### Imperative and declarative workflows
+
+Imperative creation:
+
+```bash
+kubectl run nginx-pod --image=nginx:1.27
+kubectl create deployment nginx --image=nginx:1.27
 ```
-### kubectl delete pods
-```sh
-kubectl delete pods nginx-pod
+
+Generate a manifest without creating the resource:
+
+```bash
+kubectl run nginx-pod --image=nginx:1.27 --dry-run=client -o yaml
+kubectl create deployment nginx --image=nginx:1.27 --dry-run=client -o yaml
 ```
 
-# YAML Introduction
+Declarative workflow:
 
-## 1. What is YAML?
+```bash
+kubectl apply -f pod.yaml
+kubectl diff -f pod.yaml
+kubectl delete -f pod.yaml
+```
 
-YAML stands for **YAML Ain't Markup Language**.
+Use declarative manifests for repeatable learning exercises. Use imperative commands to learn the CLI and quickly generate templates.
 
-It is a human-readable data serialization format used to store and exchange configuration data.
+## 6. YAML and Kubernetes manifests
 
-YAML is commonly used in:
-- Kubernetes configuration files
-- Docker Compose
-- Ansible
-- CI/CD pipelines (GitHub Actions, GitLab CI)
-- Application configuration
+YAML is a human-readable data serialization format commonly used for Kubernetes manifests. File extensions `.yaml` and `.yml` are both used.
 
-**File extensions:**
-- `.yaml`
-- `.yml`
-
-Both extensions are equivalent.
-
-## 2. Basic YAML Syntax
-
-YAML uses indentation to represent structure.
+### Basic syntax
 
 ```yaml
 name: nginx
 version: "1.0"
-active: true
+enabled: true
+
+ports:
+  - 80
+  - 443
+
+application:
+  name: web
+  replicas: 3
 ```
 
-Key-value pairs follow this syntax:
+Important rules:
 
-```yaml
-key: value
-```
-
-**Important rules:**
-- Use spaces for indentation, not tabs.
-- Indentation defines the structure.
+- Use spaces, not tabs, for indentation.
+- Indentation defines nested objects and lists.
 - YAML is case-sensitive.
-- Use a colon (`:`) to separate keys and values.
+- Quote strings that could be interpreted as booleans, numbers, or special values.
 - Use `#` for comments.
+- Use `|` for literal multiline strings and `>` for folded text.
 
-## 3. Data Types
+### Kubernetes object structure
 
-YAML supports several basic data types.
-
-### String
-
-```yaml
-name: nginx
-message: "Hello World"
-description: 'Web Server'
-```
-
-### Integer
+Most Kubernetes manifests have four top-level fields:
 
 ```yaml
-age: 27
-port: 8080
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.27
 ```
 
-### Float
+| Field | Meaning |
+|---|---|
+| `apiVersion` | API group/version that defines the resource |
+| `kind` | Resource type |
+| `metadata` | Name, namespace, labels, annotations, and other metadata |
+| `spec` | Desired configuration for the resource |
 
-```yaml
-price: 99.99
-version: 1.5
+Some objects expose a `status` section, which is normally populated by Kubernetes rather than specified in hand-written desired-state manifests.
+
+### Useful YAML tools
+
+- [YAML specification](https://yaml.org/spec/)
+- [yamllint](https://yamllint.com/)
+- [Kubernetes object management](https://kubernetes.io/docs/concepts/overview/working-with-objects/)
+
+## 7. Pods
+
+A Pod is the smallest deployable unit in Kubernetes. A Pod may contain one or more containers that share a network namespace and can share mounted volumes.
+
+![Creating a Pod with kubectl](./assets/kubectl_pod_cration.png)
+
+### Create a Pod imperatively
+
+```bash
+kubectl run nginx-pod --image=nginx:1.27
+kubectl get pods -o wide
+kubectl describe pod nginx-pod
+kubectl logs nginx-pod
+kubectl exec -it nginx-pod -- sh
 ```
 
-### Boolean
+### Create a Pod declaratively
 
-```yaml
-active: true
-enabled: false
-```
-
-### Null
-
-```yaml
-value: null
-username: ~
-```
-
-## 4. Lists / Arrays
-
-Lists are represented using a hyphen (`-`).
-
-```yaml
-fruits:
-  - apple
-  - banana
-  - mango
-```
-
-Another way to represent a list:
-
-```yaml
-fruits: [apple, banana, mango]
-```
-
-## 5. Nested Objects / Dictionaries
-
-Use indentation to define nested structures.
-
-```yaml
-employee:
-  name: Jay
-  age: 27
-  address:
-    city: Kanpur
-    state: Uttar Pradesh
-    country: India
-```
-
-## 6. List of Objects
-
-```yaml
-employees:
-  - name: Jay
-    role: Backend Developer
-    age: 27
-
-  - name: Rahul
-    role: Frontend Developer
-    age: 25
-```
-
-## 7. Comments
-
-Comments start with `#`.
-
-```yaml
-# Application configuration
-app:
-  name: my-app
-  port: 8080  # Application port
-```
-
-## 8. Multiline Strings
-
-### Literal Block (`|`)
-
-Preserves line breaks.
-
-```yaml
-description: |
-  This is a YAML example.
-  It contains multiple lines.
-  Line breaks are preserved.
-```
-
-### Folded Block (`>`)
-
-Folds most line breaks into spaces.
-
-```yaml
-description: >
-  This is a YAML example.
-  It contains multiple lines.
-  But it will be treated as one paragraph.
-```
-
-## 9. YAML Anchors and Aliases
-
-Anchors (`&`) define reusable values, while aliases (`*`) reuse them.
-
-```yaml
-defaults: &default_config
-  image: nginx:latest
-  restart: always
-
-service1:
-  <<: *default_config
-  port: 8080
-
-service2:
-  <<: *default_config
-  port: 8081
-```
-
-## 10. Practical Example: Kubernetes YAML
-
-Kubernetes uses YAML files to define resources such as Pods, Deployments, and Services.
-
-### nginx-pod.yaml
+Example `pod.yaml`:
 
 ```yaml
 apiVersion: v1
@@ -434,920 +469,518 @@ metadata:
   name: nginx-pod
   labels:
     app: nginx
-
 spec:
   containers:
     - name: nginx
-      image: nginx:latest
+      image: nginx:1.27
       ports:
-        - containerPort: 80
+        - name: http
+          containerPort: 80
 ```
 
-### Understanding the fields
-
-| Field | Description |
-|---|---|
-| `apiVersion` | Kubernetes API version |
-| `kind` | Type of Kubernetes resource |
-| `metadata` | Resource information |
-| `name` | Resource name |
-| `labels` | Key-value metadata |
-| `spec` | Desired resource configuration |
-| `containers` | List of containers |
-| `image` | Container image |
-| `ports` | Container port configuration |
-
-Apply the YAML file:
+Apply and inspect:
 
 ```bash
-kubectl apply -f nginx-pod.yaml
-```
-
-Check the Pod:
-
-```bash
-kubectl get pods
-```
-
-Delete the Pod:
-
-```bash
-kubectl delete -f nginx-pod.yaml
-```
-
-## 11. Common YAML Mistakes
-
-### Incorrect indentation
-
-```yaml
-employee:
- name: Jay
-  age: 27
-```
-
-Correct:
-
-```yaml
-employee:
-  name: Jay
-  age: 27
-```
-
-### Using tabs
-
-YAML does not allow tabs for indentation. Use spaces.
-
-### Missing quotes for ambiguous strings
-
-Some values can be interpreted as booleans, numbers, or other types.
-
-```yaml
-version: "1.0"
-status: "on"
-```
-
-### Incorrect list formatting
-
-Incorrect:
-
-```yaml
-fruits:
-- apple
-  - banana
-```
-
-Correct:
-
-```yaml
-fruits:
-  - apple
-  - banana
-```
-
-## 12. Useful YAML Tools
-
-- YAML Validator: https://www.yamllint.com/
-- YAML Specification: https://yaml.org/spec/
-- Kubernetes Documentation: https://kubernetes.io/docs/concepts/overview/working-with-objects/
-
-## 13. Quick Revision
-
-| Concept | Syntax |
-|---|---|
-| Key-value | `name: nginx` |
-| List | `- apple` |
-| Object | `employee: name: Jay` (nested using indentation) |
-| Comment | `# comment` |
-| String | `name: "Jay"` |
-| Boolean | `active: true` |
-| Null | `value: null` |
-| Multiline | `description: |` |
-| Anchor | `&name` |
-| Alias | `*name` |
-
-**Key Takeaway:** YAML is a human-readable configuration format. Understanding indentation, key-value pairs, lists, and nested objects is essential before working with Kubernetes manifests.
-
-# Kubectl Pod Creation
-
-![kubectl pod creation](./assets/kubectl_pod_cration.png)
-
-
-## Creating an nginx pod through kubectl imperative way
-```sh
-kubectl run nginx-pod --image=nginx:latest
-```
-
-## Creating an nginx pod through kubectl declarative way
-
-### create `pod.yaml`
-```yaml
-# This is a sample pod yaml
-
-apiVersion: v1
-kind: Pod
-metadata:
-  name: nginx-pod
-  labels:
-    env: demo
-    type: frontend
-spec:
-  containers:
-  - name: nginx-container
-    image: nginx
-    ports:
-    - containerPort: 80
-```
-** In `metadata` we have `labels` it is basically a key-value pair, whihc can be used to identify/filter.
-
-### create pod
-```sh
-kubectl create -f pod.yaml
-``` 
-
-#### verification
-```sh
-kubectl get pods
-```
-```txt
-NAME        READY   STATUS    RESTARTS   AGE
-nginx-pod   1/1     Running   0          5s
-```
-
-### applying new yaml
-```sh
 kubectl apply -f pod.yaml
-```
-
-### describing pod
-```sh
+kubectl get pod nginx-pod
 kubectl describe pod nginx-pod
+kubectl get pod nginx-pod -o yaml
 ```
 
-### edit pod yaml
-```sh
-kubectl edit pod nginx-pod
-```
-
-### get a yaml template for any image
-```sh
-kubectl run nginx --image=nginx --dry-run=client -o yaml
-```
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    run: nginx
-  name: nginx
-spec:
-  containers:
-  - image: nginx
-    name: nginx
-    resources: {}
-  dnsPolicy: ClusterFirst
-  restartPolicy: Always
-status: {}
-```
-
-
-# Kubectl replication
-
-## ReplicationController
-
-### create `rc.yaml` and  use below content
-```sh
-touch rc.yaml
-```
-```yaml
-apiVersion: v1
-kind: ReplicationController
-metadata:
-  name: nginx-rc
-  labels:
-    app: nginx-rc
-spec:
-  replicas: 3
-  selector:
-    app: nginx-rc
-  template:
-    metadata:
-      labels:
-        app: nginx-rc
-    spec:
-      containers:
-        - name: nginx
-          image: nginx
-          ports:
-            - containerPort: 80
-```
-
-#### apply it
-```sh
-kubectl apply -f rc.yaml 
-```
-
-#### verify it
-```sh
-kubectl get pods
-```
-```txt
-NAME             READY   STATUS    RESTARTS   AGE
-nginx-rc-2mjzb   1/1     Running   0          7s
-nginx-rc-bspjw   1/1     Running   0          7s
-nginx-rc-wq4p7   1/1     Running   0          7s
-```
-
-## ReplicaSet
-
-![ReplicaSet](./assets/replicaset.png)
-
-### create `rs.yaml` and use below content
-```sh
-touch rs.yaml
-```
-```yaml
-apiVersion: apps/v1
-kind: ReplicaSet
-metadata:
-  name: nginx-rs
-  labels:
-    app: nginx-rs
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: nginx-rs
-  template:
-    metadata:
-      labels:
-        app: nginx-rs
-    spec:
-      containers:
-        - name: nginx
-          image: nginx
-          ports:
-            - containerPort: 80
-```
-
-### Apply it
-```sh
-kubectl apply -f rs.yaml
-```
-
-### verify if
-```sh
-kubectl get pods
-```
-```txt
-NAME             READY   STATUS    RESTARTS   AGE
-nginx-rc-6l5zs   1/1     Running   0          81s
-nginx-rc-sz8ps   1/1     Running   0          81s
-nginx-rc-vjj9m   1/1     Running   0          81s
-nginx-rs-f8svq   1/1     Running   0          7s
-nginx-rs-fnqkt   1/1     Running   0          7s
-nginx-rs-ktcvg   1/1     Running   0          7s
-```
-
-## Updating replicas
-
-### Using kubectl apply
-** edit the <yaml-file> and then execute below commands
-```sh
-kubectl apply -f <yaml-file>
-```
-
-### Using kubectl edit
-```sh
-kubectl edit rs/nginx-rs
-```
-** edit and save the file
-
-### Using kubectl scale
-```sh
-kubectl scale --replicas=10 rs/nginx-rs
-```
-
-## Deleting ReplicaController
-
-### Fetch the ReplicaController
-```sh
-kubectl get rc
-```
-```txt
-NAME       DESIRED   CURRENT   READY   AGE
-nginx-rc   3         3         3       13m
-```
-
-### Delete the ReplicaController
-```sh
-kubectl delete rc/nginx-rc
-```
-```txt
-replicationcontroller "nginx-rc" deleted from default namespace
-```
-
-## Deleting ReplicaSet
-
-### Fetch the ReplicaSet
-```sh
-kubectl get rs
-```
-```txt
-NAME       DESIRED   CURRENT   READY   AGE
-nginx-rs   3         3         3       14m
-```
-
-### Delete the ReplicaSet
-```sh
-kubectl delete rs/nginx-rs
-```
-```txt
-replicaset.apps "nginx-rs" deleted from default namespace
-```
-
-# Difference between ReplicationController and ReplicaSet
-
-Both ReplicationController and ReplicaSet maintain a desired number of Pod replicas. They can manage existing Pods and create new Pods when required.
-
-The main difference is their selector capabilities:
-
-- **ReplicationController:** Supports only equality-based selectors.
-- **ReplicaSet:** Supports both equality-based and set-based selectors.
-
-Additionally, ReplicaSet is used by Kubernetes Deployments to manage Pods.
-
-**Example:** ReplicaSet supports operators such as `In`, `NotIn`, `Exists`, and `DoesNotExist` through `matchExpressions`.
-
-# Kubectl deployment
-
-![Kubectl deployment](./assets/deployment.png)
-
-### Create the yaml file and add below content in it
-```sh
-touch deploy.yaml
-```
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app: nginx-deploy
-  name: nginx-deploy
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: nginx-deploy
-  strategy: {}
-  template:
-    metadata:
-      labels:
-        app: nginx-deploy
-    spec:
-      containers:
-      - image: nginx
-        name: nginx
-        resources: {}
-status: {}
-```
-
-### Kubectl apply
-```sh
-kubectl apply -f deploy.yaml
-```
-```txt
-deployment.apps/nginx-deploy created
-```
-
-### verify creation
-```sh
-kubectl get deploy
-```
-```txt
-NAME           READY   UP-TO-DATE   AVAILABLE   AGE
-nginx-deploy   3/3     3            3           2m36s
-```
-
-```sh
-kubectl get pods
-```
-```txt
-NAME                            READY   STATUS    RESTARTS   AGE
-nginx-deploy-5df7454d54-tm5dn   1/1     Running   0          101s
-nginx-deploy-5df7454d54-zc2qv   1/1     Running   0          101s
-nginx-deploy-5df7454d54-znnjs   1/1     Running   0          101s
-```
-
-### verify all
-```sh
-kubectl get all
-```
-```txt
-NAME                                READY   STATUS    RESTARTS   AGE
-pod/nginx-deploy-5df7454d54-tm5dn   1/1     Running   0          3m18s
-pod/nginx-deploy-5df7454d54-zc2qv   1/1     Running   0          3m18s
-pod/nginx-deploy-5df7454d54-znnjs   1/1     Running   0          3m18s
-
-NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
-service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   140m
-
-NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/nginx-deploy   3/3     3            3           3m18s
-
-NAME                                      DESIRED   CURRENT   READY   AGE
-replicaset.apps/nginx-deploy-5df7454d54   3         3         3       3m18s
-```
-
-### updating image
-```sh
-kubectl set image deployment/nginx-deploy nginx=nginx:1.27
-```
-
-### checking deploy history
-```sh
-kubectl rollout history deploy/nginx-deploy
-```
-
-### undo the chnage
-```sh
-kubectl rollout undo deploy/nginx-deploy
-```
-
-### Create Yaml template
-```sh
-kubectl create deployment nginx-deploy --image=nginx --dry-run=client -o yaml
-```
+### Pod lifecycle and debugging
 
-# Kubectl services
+Common states include Pending, Running, Succeeded, Failed, and Unknown. Container waiting reasons include ImagePullBackOff and CrashLoopBackOff.
 
-![Services](./assets/services.png)
-
-## Create cluster from yaml
-
-### create `kind.yaml` with below content
-```sh
-touch kind.yaml
-```
-```yaml
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-  - role: control-plane
-    extraPortMappings:
-      - containerPort: 30001
-        hostPort: 30001
-        protocol: TCP
-  - role: worker
-  - role: worker
-```
-
-### create the cluster
-```sh
-kind create cluster --config kind.yaml --name cka-cluster1
-```
-
-## Create deployment from yaml
-```sh
-touch deploy.yaml
-```
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app: nginx-deploy
-  name: nginx-deploy
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: nginx-deploy
-  strategy: {}
-  template:
-    metadata:
-      labels:
-        app: nginx-deploy
-    spec:
-      containers:
-      - image: nginx
-        name: nginx
-        ports:
-        - containerPort: 80
-        resources: {}
-status: {}
-```
-
-### create the deployment
-```sh
-kubectl apply -f deploy.yaml
-```
-
-## NodePort
-
-![NodePost](./assets/nodeport.png)
-
-### Create `nodeport.yaml` with below content
-```sh
-touch nodeport.yaml
-```
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: nodeport-svc
-  labels:
-    env: demo
-spec:
-  type: NodePort
-  selector:
-    app: nginx-deploy
-  ports:
-    - port: 80
-      targetPort: 80
-      nodePort: 30001
-      protocol: TCP
-```
-
-### Execute belwo one
-```sh
-kubectl create -f nodeport.yaml
-```
-```txt
-service/nodeport-svc created
-```
-
-### verify it
-```sh
-kubectl get svc
-```
-```txt
-NAME           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
-kubernetes     ClusterIP   10.96.0.1       <none>        443/TCP        3h33m
-nodeport-svc   NodePort    10.96.157.216   <none>        80:30001/TCP   8s
-```
-
-### verify whether it is accessible or not
-```sh
-curl http://localhost:30001
-```
-```htnl
-<!DOCTYPE html>
-<html>
-<head>
-<title>Welcome to nginx!</title>
-<style>
-html { color-scheme: light dark; }
-body { width: 35em; margin: 0 auto;
-font-family: Tahoma, Verdana, Arial, sans-serif; }
-</style>
-</head>
-<body>
-<h1>Welcome to nginx!</h1>
-<p>If you see this page, nginx is successfully installed and working.
-Further configuration is required for the web server, reverse proxy, 
-API gateway, load balancer, content cache, or other features.</p>
-
-<p>For online documentation and support please refer to
-<a href="https://nginx.org/">nginx.org</a>.<br/>
-To engage with the community please visit
-<a href="https://community.nginx.org/">community.nginx.org</a>.<br/>
-For enterprise grade support, professional services, additional 
-security features and capabilities please refer to
-<a href="https://f5.com/nginx">f5.com/nginx</a>.</p>
-
-<p><em>Thank you for using nginx.</em></p>
-</body>
-</html>
-```
-
-## ClusterIP
-
-![ClusterIp](./assets/clusterip.png)
-
-### create `clusterip.yaml` with below content
-```sh
-touch clusterip.yaml
-```
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: cluster-svc
-  labels:
-    env: demo
-spec:
-  type: ClusterIP
-  selector:
-    app: nginx-deploy
-  ports:
-    - port: 80
-      targetPort: 80
-      protocol: TCP
-```
-
-### create the service
-```sh
-kubectl apply -f clusterip.yaml
-```
-```txt
-service/cluster-svc created
-```
-
-### verify service
-```sh
-kubectl get svc
-```
-```txt
-NAME           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
-cluster-svc    ClusterIP   10.96.108.17    <none>        80/TCP         23s
-kubernetes     ClusterIP   10.96.0.1       <none>        443/TCP        11m
-nodeport-svc   NodePort    10.96.165.194   <none>        80:30001/TCP   11m
-```
-
-```sh
-kubectl get endpoints
-```
-```txt
-NAME           ENDPOINTS                                   AGE
-cluster-svc    10.244.2.2:80,10.244.2.3:80,10.244.2.4:80   110s
-kubernetes     172.23.0.3:6443                             13m
-nodeport-svc   10.244.2.2:80,10.244.2.3:80,10.244.2.4:80   12m
+```bash
+kubectl get pod nginx-pod -w
+kubectl describe pod nginx-pod
+kubectl logs nginx-pod
+kubectl logs nginx-pod --previous
+kubectl delete pod nginx-pod
 ```
 
-## LoadBalancer
+A Pod created directly is not automatically recreated after deletion. Use a controller such as a Deployment when you need replicas and self-healing.
 
-![LoadBalancer](./assets/loadbalancer.png)
+### Multi-container Pods
 
-### create `lb.yaml` with below content
-```sh
-touch lb.yaml
-```
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: lb-svc
-  labels:
-    env: demo
-spec:
-  type: LoadBalancer 
-  selector:
-    app: nginx-deploy
-  ports:
-    - port: 80
-      targetPort: 80
-      protocol: TCP
-```
-
-### create it
-```sh
-kubectl create -f lb.yaml
-```
-```txt
-service/lb-svc created
-```
-
-
-### verify service
-```sh
-kubectl get svc
-```
-```txt
-NAME           TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
-cluster-svc    ClusterIP      10.96.108.17    <none>        80/TCP         8m32s
-kubernetes     ClusterIP      10.96.0.1       <none>        443/TCP        20m
-lb-svc         LoadBalancer   10.96.250.160   <pending>     80:30934/TCP   64s
-nodeport-svc   NodePort       10.96.165.194   <none>        80:30001/TCP   19m
-```
-
-```sh
-kubectl get endpoints
-```
-```txt
-NAME           ENDPOINTS                                   AGE
-cluster-svc    10.244.2.2:80,10.244.2.3:80,10.244.2.4:80   8m49s
-kubernetes     172.23.0.3:6443                             20m
-lb-svc         10.244.2.2:80,10.244.2.3:80,10.244.2.4:80   81s
-nodeport-svc   10.244.2.2:80,10.244.2.3:80,10.244.2.4:80   19m
-```
-
-
-## ExternalName
-
-## Create `externalname.yaml` with below content
-```sh
-touch externalname.yaml
-```
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: externalname-svc
-  labels:
-    env: demo
-spec:
-  type: ExternalName 
-  externalName: my.service.example.com
-```
-
-
-### create it
-```sh
-kubectl create -f externalname.yaml
-```
-```txt
-service/externalname-svc created
-```
-
-
-### verify service
-```sh
-kubectl get svc
-```
-```txt
-NAME               TYPE           CLUSTER-IP      EXTERNAL-IP              PORT(S)        AGE
-cluster-svc        ClusterIP      10.96.108.17    <none>                   80/TCP         16m
-externalname-svc   ExternalName   <none>          my.service.example.com   <none>         49s
-kubernetes         ClusterIP      10.96.0.1       <none>                   443/TCP        28m
-lb-svc             LoadBalancer   10.96.250.160   <pending>                80:30934/TCP   9m5s
-nodeport-svc       NodePort       10.96.165.194   <none>                   80:30001/TCP   27m
-```
-
-### test it
-```sh
-kubectl run dns-test \
-  --image=busybox:1.36 \
-  --restart=Never \
-  --rm -it \
-  -- nslookup externalname-svc.default.svc.cluster.local
-```
-```txt
-Server:         10.96.0.10
-Address:        10.96.0.10:53
-
-externalname-svc.default.svc.cluster.local      canonical name = my.service.example.com
-
-externalname-svc.default.svc.cluster.local      canonical name = my.service.example.com
-
-All commands and output from this session will be recorded in container logs, including credentials and sensitive information passed through the command prompt.
-If you don't see a command prompt, try pressing enter.
-warning: couldn't attach to pod/dns-test, falling back to streaming logs: Internal error occurred: Internal error occurred: error attaching to container: failed to load task: no running task found: not found
-Server:         10.96.0.10
-Address:        10.96.0.10:53
+Containers in the same Pod share the Pod IP and can communicate over localhost. They may share volumes. Common patterns include sidecars and init containers. Keep tightly coupled containers together; do not use a multi-container Pod merely because two applications belong to one product.
 
-externalname-svc.default.svc.cluster.local      canonical name = my.service.example.com
+## 8. Labels, selectors, and namespaces
 
-externalname-svc.default.svc.cluster.local      canonical name = my.service.example.com
+Labels are key-value metadata used to organize and select objects. Selectors allow controllers and Services to identify the Pods they manage or route traffic to.
 
-pod "dns-test" deleted from default namespace
+```bash
+kubectl get pods --show-labels
+kubectl get pods -l app=nginx
+kubectl label pod nginx-pod environment=dev
+kubectl label pod nginx-pod environment-
 ```
-
-
-## Using kubectl expose
-```sh
-kubectl expose deployment nginx-deploy --port=80 --target-port=80
-```
-```txt
-service/nginx-deploy exposed
-```
-
-### verify service
-```sh
-kubectl get svc
-```
-```txt
-NAME               TYPE           CLUSTER-IP      EXTERNAL-IP              PORT(S)        AGE
-cluster-svc        ClusterIP      10.96.108.17    <none>                   80/TCP         23m
-externalname-svc   ExternalName   <none>          my.service.example.com   <none>         7m46s
-kubernetes         ClusterIP      10.96.0.1       <none>                   443/TCP        34m
-lb-svc             LoadBalancer   10.96.250.160   <pending>                80:30934/TCP   16m
-nginx-deploy       ClusterIP      10.96.43.180    <none>                   80/TCP         44s
-nodeport-svc       NodePort       10.96.165.194   <none>                   80:30001/TCP   34m
-```
-
-
-# Kubectl Namespace
-
-### What is a Namespace in Kubernetes
 
-- A namespace is a logical group of resources inside a cluster. Resource names must be unique within a namespace, but the same name can be reused in another namespace
-- Helps to avoid accidental deletion/modification, because you work on one namespace at a time
-- You can separate resources by team, environment, application and so on, and apply RBAC, resource quotas and network policies per namespace
-- A namespace does not isolate the network on its own. By default, a pod can reach pods and services in every other namespace. You need network policies (Day 26) to restrict that
-- Resources in the same namespace can reach a service by its short name, for example `svc-ns1`. To reach a service in another namespace, use `<service>.<namespace>` or the full DNS name `<service>.<namespace>.svc.cluster.local`
-- Not every resource lives in a namespace. Nodes, PersistentVolumes, StorageClasses, ClusterRoles and Namespaces themselves are cluster-scoped. Run `kubectl api-resources --namespaced=false` to see the full list
+### Namespaces
 
-![Namespaces](./assets/namespace.png)
+Namespaces provide logical grouping and naming scope for namespaced resources. They are useful for teams, environments, and application boundaries.
 
-### Commands used in the video
+![Kubernetes namespaces](./assets/namespace.png)
 
 ```bash
 kubectl get namespaces
 kubectl create namespace demo
 kubectl get pods -n demo
-kubectl get pods --all-namespaces        # or -A
-
-# set the default namespace for your current context
+kubectl get pods -A
 kubectl config set-context --current --namespace=demo
-
-# deleting a namespace deletes everything inside it
-kubectl delete namespace demo
 ```
 
-## Creating `namespace` using yaml
+The current namespace setting changes the default for that context. You can always specify `-n <namespace>` explicitly.
 
-### Create `ns.yaml` with below content
-```sh
-touch ns.yaml
-```
+Important: namespaces do not provide network isolation by themselves. Use NetworkPolicies and a compatible network plugin when network restrictions are required. Nodes, PersistentVolumes, StorageClasses, ClusterRoles, and namespaces themselves are cluster-scoped.
+
+## 9. ReplicaSets and Deployments
+
+### ReplicationController
+
+ReplicationController is a legacy controller that maintains a configured number of Pods. It supports equality-based selectors. It is useful to understand historically, but new application workloads should generally use Deployments.
+
+### ReplicaSet
+
+A ReplicaSet maintains the desired number of matching Pods. It supports set-based selectors through `matchExpressions`.
+
+![ReplicaSet](./assets/replicaset.png)
+
+### Deployment
+
+A Deployment manages ReplicaSets and provides declarative rollout and rollback for stateless applications.
+
+![Deployment](./assets/deployment.png)
+
+Example:
+
 ```yaml
-apiVersion: v1
-kind: Namespace
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: demo
+  name: nginx-deploy
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27
+          ports:
+            - name: http
+              containerPort: 80
 ```
 
-### Create namespace
-```sh
-kubectl apply -f ns.yaml
+Apply and verify:
+
+```bash
+kubectl apply -f deployment/deploy.yaml
+kubectl get deployments,replicasets,pods
+kubectl rollout status deployment/nginx-deploy
 ```
 
-### verify namespace
-```sh
-kubectl get namespaces
-```
-```txt
-NAME                 STATUS   AGE
-default              Active   2d16h
-demo                 Active   9s
-kube-node-lease      Active   2d16h
-kube-public          Active   2d16h
-kube-system          Active   2d16h
-local-path-storage   Active   2d16h
+Scale and update:
+
+```bash
+kubectl scale deployment/nginx-deploy --replicas=5
+kubectl set image deployment/nginx-deploy nginx=nginx:1.28
+kubectl rollout status deployment/nginx-deploy
+kubectl rollout history deployment/nginx-deploy
+kubectl rollout undo deployment/nginx-deploy
 ```
 
-### Deleting a namespace
-```sh
-kubectl delete namespace demo
+A Deployment selector must match the labels in its Pod template. Selectors should be unique to the workload; overlapping controllers can unintentionally manage the same Pods.
+
+## 10. Services and service discovery
+
+Pods are replaceable and their IP addresses can change. A Service provides a stable virtual endpoint and selects backend Pods using labels.
+
+![Kubernetes Service traffic flow](./assets/kubernetes_service_ingress_flow.svg)
+
+### Service types
+
+| Type | Purpose |
+|---|---|
+| ClusterIP | Internal virtual IP accessible within the cluster; default type |
+| NodePort | Exposes a port on each node, typically in the configured NodePort range |
+| LoadBalancer | Requests an external load balancer from a supported platform/provider |
+| ExternalName | Returns a DNS CNAME for an external hostname; it does not proxy traffic |
+
+![ClusterIP Service](./assets/clusterip.png)
+
+![NodePort Service](./assets/nodeport.png)
+
+![LoadBalancer Service](./assets/loadbalancer.png)
+
+The provided Service manifests select Pods labelled `app: nginx-deploy`. The matching Deployment is [services/deploy.yaml](services/deploy.yaml).
+
+Apply examples:
+
+```bash
+kubectl apply -f services/deploy.yaml
+kubectl apply -f services/clusterip.yaml
+kubectl get services
+kubectl get endpointslices
+kubectl describe service cluster-svc
 ```
 
-### verify deletion
-```sh
-kubectl get namespaces
-```
-```txt
-NAME                 STATUS   AGE
-default              Active   2d16h
-kube-node-lease      Active   2d16h
-kube-public          Active   2d16h
-kube-system          Active   2d16h
-local-path-storage   Active   2d16h
+For NodePort, create the kind cluster with [services/kind.yaml](services/kind.yaml) before applying `services/nodeport.yaml`:
+
+```bash
+kubectl apply -f services/nodeport.yaml
+kubectl get service nodeport-svc
+curl http://localhost:30001
 ```
 
-## Creating `namespace` using kubectl
+For LoadBalancer, a local cluster usually needs an additional load-balancer implementation. Without one, the external address may remain Pending. ExternalName is a DNS alias; it does not create endpoints or proxy an HTTP connection.
 
-```sh
-kubectl create namespace demo
+### Service discovery
+
+Inside the same namespace, a Service can normally be reached by its short name. From another namespace, use `<service>.<namespace>` or the full DNS name:
+
+```text
+<service>.<namespace>.svc.cluster.local
 ```
 
-### Verify creation
-```sh
-kubectl get namespaces
-```
-```txt
-NAME                 STATUS   AGE
-default              Active   2d16h
-demo                 Active   4s
-kube-node-lease      Active   2d16h
-kube-public          Active   2d16h
-kube-system          Active   2d16h
-local-path-storage   Active   2d16h
+Troubleshoot selectors and endpoints:
+
+```bash
+kubectl get pods --show-labels
+kubectl get service cluster-svc -o yaml
+kubectl get endpointslices -l kubernetes.io/service-name=cluster-svc
+kubectl get pods -n kube-system
 ```
 
-## Creating resources
+A Service with no ready endpoints commonly indicates a selector mismatch or no Ready backend Pods.
 
-While creating resource we need to pass `-n <namespace-name>` so that resource gets created in the passed namespace, else it will be created in defalt namespace
+## 11. Configuration and secrets
 
+### ConfigMaps
 
-# Multi container Pod
+ConfigMaps store non-sensitive configuration. Values can be exposed as environment variables or mounted as files.
 
+### Secrets
+
+Secrets store sensitive values such as tokens and passwords. Base64 in a Secret manifest is encoding, not encryption. Do not commit real passwords, API tokens, kubeconfig files, or private keys to Git. Use a secret-management solution and configure encryption at rest and access controls where appropriate.
+
+Example workflow:
+
+```bash
+kubectl create configmap app-config --from-literal=LOG_LEVEL=info
+kubectl create secret generic app-secret --from-literal=API_TOKEN=replace-me
+kubectl get configmaps,secrets
+kubectl describe configmap app-config
+```
+
+Example manifests and a configured Pod are available in [configuration/](configuration/).
+
+## 12. Workloads and scheduling
+
+Kubernetes provides several controllers for different workload patterns.
+
+| Resource | Typical purpose |
+|---|---|
+| Deployment | Stateless replicated applications |
+| StatefulSet | Stateful applications needing stable identity and storage association |
+| DaemonSet | Run a Pod on every eligible node |
+| Job | Run a task to completion |
+| CronJob | Create Jobs on a schedule |
+| Static Pod | Pod managed by kubelet from a node-local manifest |
+
+### Scheduling concepts
+
+- **Requests and limits:** Requests influence scheduling; limits constrain resource use.
+- **Node selector:** Simple node-label matching.
+- **Node affinity:** Expresses required or preferred node placement rules.
+- **Pod affinity/anti-affinity:** Places Pods relative to other Pods.
+- **Taints and tolerations:** Repel Pods unless they tolerate the taint; a toleration does not force placement.
+- **PriorityClass:** Assigns relative scheduling priority and can enable preemption.
+
+See examples in [workloads/](workloads/) and [scheduling/](scheduling/).
+
+```bash
+kubectl get pods -o wide
+kubectl describe pod <pod-name>
+kubectl get jobs,cronjobs,daemonsets,statefulsets
+kubectl top nodes
+kubectl top pods
+```
+
+Metrics commands require a compatible metrics pipeline such as metrics-server.
+
+## 13. Networking
+
+Kubernetes networking involves Pod-to-Pod connectivity, Services, DNS, network plugins, and external traffic routing.
+
+### Main concepts
+
+- **CNI:** Container Network Interface plugin configures Pod networking.
+- **CoreDNS:** Provides cluster DNS service discovery.
+- **NetworkPolicy:** Defines allowed Pod ingress and egress traffic, when enforced by a compatible CNI.
+- **Ingress:** HTTP/HTTPS routing rules that require an Ingress controller.
+- **Gateway API:** A newer, role-oriented set of routing APIs including GatewayClass, Gateway, and HTTPRoute. It requires a compatible controller and CRDs.
+
+NetworkPolicies are not enforced by every network plugin. Creating a NetworkPolicy object on a cluster whose CNI does not implement it may have no effect. Ingress objects also do not create a data plane on their own.
+
+See [networking/](networking/) for starter manifests. For deeper topics, follow the relevant days in the [CKA course repository](https://github.com/piyushsachdeva/CKA-2024/).
+
+## 14. Storage
+
+Containers have an ephemeral writable layer. Kubernetes provides volume abstractions to supply data to Pods and keep data independent of a particular container instance.
+
+| Resource | Purpose |
+|---|---|
+| emptyDir | Temporary volume whose lifetime is tied to the Pod |
+| hostPath | Mounts a path from the node filesystem; use carefully |
+| PersistentVolume (PV) | Represents provisioned storage in the cluster |
+| PersistentVolumeClaim (PVC) | A workload's request for storage |
+| StorageClass | Defines a storage class and provisioner for dynamic provisioning |
+
+Access modes, volume modes, reclaim policies, binding modes, and CSI drivers affect how storage is provisioned and mounted.
+
+See [storage/](storage/) and the StatefulSet example in [workloads/](workloads/). PVC examples may require a default StorageClass or a compatible storage provisioner. Inspect first:
+
+```bash
+kubectl get storageclass
+kubectl get pv,pvc -A
+kubectl describe pvc <claim-name>
+```
+
+## 15. Security and access control
+
+Kubernetes security involves authentication, authorization, admission, workload security, network controls, and protection of secrets.
+
+### RBAC
+
+- **Role:** Defines permissions within a namespace.
+- **RoleBinding:** Grants a Role or ClusterRole to subjects in a namespace.
+- **ClusterRole:** Defines cluster-wide or reusable permissions.
+- **ClusterRoleBinding:** Grants a ClusterRole across the cluster.
+
+```bash
+kubectl auth can-i list pods -n demo
+kubectl auth can-i create deployments -n demo
+kubectl get serviceaccounts,roles,rolebindings -n demo
+```
+
+Examples live in [security/](security/).
+
+### Pod security
+
+SecurityContext can define the user/group ID, capabilities, privilege escalation, filesystem behavior, and seccomp settings. Pod Security Admission can enforce the Baseline or Restricted standards at namespace level.
+
+Never use privileged mode or broad cluster-admin permissions just to make an exercise work. Understand the permission being granted.
+
+## 16. Cluster administration
+
+Cluster administration requires access to the Linux nodes and a cluster built with an appropriate tool such as kubeadm.
+
+Important tasks:
+
+- kubeadm installation and cluster lifecycle.
+- Node maintenance with `cordon`, `drain`, and `uncordon`.
+- Kubernetes minor-version upgrades.
+- etcd snapshots and tested recovery.
+- Certificate inspection and renewal.
+- Control-plane component health.
+- Container runtime and kubelet troubleshooting.
+- Highly available control-plane architecture.
+
+See [operations/README.md](operations/README.md) and [operations/EXTENDED-TOPICS.md](operations/EXTENDED-TOPICS.md). Back up etcd before risky changes, store snapshots securely, and test restores in a controlled environment.
+
+## 17. Troubleshooting
+
+Troubleshoot methodically: identify the affected resource, inspect its state and events, check its owner/controller, and then investigate scheduling, configuration, storage, networking, and node-level components.
+
+### First-response commands
+
+```bash
+kubectl config current-context
+kubectl get nodes -o wide
+kubectl get pods -A -o wide
+kubectl get events -A --sort-by=.metadata.creationTimestamp
+kubectl get deployments,replicasets,statefulsets,daemonsets -A
+```
+
+### Common symptoms
+
+| Symptom | Possible causes | First checks |
+|---|---|---|
+| Pending | Unsatisfied requests, taints, affinity, unbound PVC | `describe pod`, events, PVC |
+| ImagePullBackOff | Wrong image/tag, registry auth, network/DNS | Pod events and image reference |
+| CrashLoopBackOff | Process exits, bad config, failing probe | `logs`, `logs --previous`, describe |
+| OOMKilled | Memory limit too low or application memory issue | Last state, resource settings, metrics |
+| No Service endpoints | Selector mismatch or no Ready Pods | Pod labels and EndpointSlices |
+| DNS failure | CoreDNS, network plugin, DNS policy, bad name | `nslookup`, CoreDNS Pods/logs |
+| PVC Pending | No suitable PV or dynamic provisioner | PVC events, StorageClasses |
+
+Full guide and practice drills: [troubleshooting/README.md](troubleshooting/README.md).
+
+## 18. Helm, Kustomize, CRDs, and operators
+
+### Helm
+
+Helm packages Kubernetes manifests into Charts and manages installed releases. This repository includes a starter chart in [helm/nginx/](helm/nginx/).
+
+```bash
+helm lint helm/nginx
+helm template demo-web helm/nginx
+helm install demo-web helm/nginx --namespace demo --create-namespace
+helm list -n demo
+helm upgrade demo-web helm/nginx --set replicaCount=3 -n demo
+helm history demo-web -n demo
+helm rollback demo-web 1 -n demo
+helm uninstall demo-web -n demo
+```
+
+### Kustomize
+
+Kustomize applies environment-specific changes through bases and overlays without requiring templates.
+
+```bash
+kubectl kustomize kustomize/overlays/dev
+kubectl diff -k kustomize/overlays/dev
+kubectl apply -k kustomize/overlays/dev
+kubectl delete -k kustomize/overlays/dev
+```
+
+### CRDs and operators
+
+A CustomResourceDefinition (CRD) extends the Kubernetes API with a new resource type. A controller or Operator adds behavior by reconciling those custom resources.
+
+The [custom-resources/](custom-resources/) directory contains a learning CRD and custom resource. A CRD by itself defines and validates an API object; it does not implement application logic.
+
+## 19. Practical exercises
+
+Suggested sequence:
+
+1. Create a local kind cluster and explain each node.
+2. Deploy an NGINX Pod imperatively and declaratively.
+3. Replace the Pod with a Deployment and observe the ReplicaSet.
+4. Delete one Pod and watch the controller replace it.
+5. Expose the Deployment through a ClusterIP Service.
+6. Break the Service selector and diagnose empty endpoints.
+7. Expose the workload through NodePort in the kind cluster configured for host port mapping.
+8. Add ConfigMaps and Secrets; inspect environment variables and mounted files.
+9. Schedule a Pod using labels, affinity, and tolerations.
+10. Restrict traffic with NetworkPolicies on a compatible CNI.
+11. Mount a PVC and verify that data survives Pod replacement.
+12. Create an RBAC Role and prove allowed and denied operations with `kubectl auth can-i`.
+13. Deploy the sample Helm Chart and render the Kustomize overlay.
+14. Work through the troubleshooting drills with a time limit.
+
+Use [Handson.md](Handson.md) for the guided commands and cleanup instructions. Use [ROADMAP.md](ROADMAP.md) as the completion tracker.
+
+## Quick reference
+
+### Cluster and context
+
+```bash
+kubectl cluster-info
+kubectl get nodes -o wide
+kubectl config get-contexts
+kubectl config current-context
+kubectl config use-context <context>
+```
+
+### Inspect resources
+
+```bash
+kubectl get pods -A -o wide
+kubectl get events -A --sort-by=.metadata.creationTimestamp
+kubectl get <resource> <name> -o yaml
+kubectl describe <resource> <name>
+kubectl explain <resource>.spec
+```
+
+### Apply and delete manifests
+
+```bash
+kubectl apply -f manifest.yaml
+kubectl diff -f manifest.yaml
+kubectl delete -f manifest.yaml
+```
+
+### Deployments
+
+```bash
+kubectl rollout status deployment/<name>
+kubectl rollout history deployment/<name>
+kubectl rollout undo deployment/<name>
+kubectl scale deployment/<name> --replicas=3
+kubectl set image deployment/<name> <container>=<image>:<tag>
+```
+
+### Debug containers and Services
+
+```bash
+kubectl logs <pod>
+kubectl logs <pod> --previous
+kubectl exec -it <pod> -- sh
+kubectl get endpointslices
+kubectl get pods --show-labels
+```
+
+### Node maintenance
+
+```bash
+kubectl cordon <node>
+kubectl drain <node> --ignore-daemonsets
+kubectl uncordon <node>
+```
+
+Always confirm your cluster context and namespace before running mutating commands. Replace placeholders before executing commands.
+
+## Repository map
+
+| Path | Description |
+|---|---|
+| [README.md](README.md) | Main guide and concept explanations |
+| [ROADMAP.md](ROADMAP.md) | Full CKA-oriented topic checklist |
+| [Handson.md](Handson.md) | Guided practical exercises |
+| [notes.md](notes.md) | Long-form beginner learning guide |
+| [REFERENCE-NOTES.md](REFERENCE-NOTES.md) | Previous README content preserved for reference |
+| [download-assets.sh](download-assets.sh) | Download remote Markdown images into `assets/` |
+| [assets/](assets/) | Locally stored diagrams and images |
+| [deployment/](deployment/) | Deployment manifest |
+| [kubectl_pod_creation/](kubectl_pod_creation/) | Pod manifest |
+| [replication/](replication/) | ReplicationController and ReplicaSet manifests |
+| [namespaces/](namespaces/) | Namespace manifest |
+| [kind_cluster/](kind_cluster/) | Multi-node kind configuration |
+| [services/](services/) | Service manifests and NodePort kind configuration |
+| [configuration/](configuration/) | ConfigMap and Secret examples |
+| [workloads/](workloads/) | Jobs, CronJobs, DaemonSets, StatefulSets |
+| [scheduling/](scheduling/) | Scheduling and resource-control examples |
+| [security/](security/) | ServiceAccount, RBAC, and Pod Security examples |
+| [networking/](networking/) | NetworkPolicy and Ingress examples |
+| [storage/](storage/) | PVC examples |
+| [operations/](operations/) | Cluster administration and extended topics |
+| [troubleshooting/](troubleshooting/) | Troubleshooting playbook |
+| [helm/](helm/) | Starter Helm chart |
+| [kustomize/](kustomize/) | Base resources and development overlay |
+| [custom-resources/](custom-resources/) | CRD and custom-resource examples |
+
+## Important notes
+
+- Kubernetes APIs and command behavior can change between versions. Check the API version supported by your cluster.
+- A container port declaration does not publish a Service or open a host port by itself.
+- A NodePort in kind needs an appropriate `extraPortMappings` configuration to reach it through localhost.
+- A LoadBalancer Service needs a cloud integration or local load-balancer implementation.
+- NetworkPolicies require a CNI implementation that enforces them.
+- Ingress requires an installed Ingress controller. Gateway API requires CRDs and a compatible controller.
+- PVC and StatefulSet examples require a suitable StorageClass or pre-provisioned storage.
+- Metrics commands require a metrics pipeline such as metrics-server.
+- Base64 is not encryption. Never commit real credentials or private keys.
+- Do not run cluster upgrade, etcd restore, or node maintenance commands on a production cluster without a tested plan and backups.
+
+---
+
+**Keep learning by building, testing, troubleshooting, and documenting.**
