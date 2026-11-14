@@ -36,7 +36,7 @@ while IFS= read -r -d '' md_file; do
       *) : ;;
     esac
   done < <(grep -oE '!\[[^]]*\]\([^ )]+' "$md_file" | sed -E 's/^!\[[^]]*\]\(//' || true)
-done < <(find "$SCRIPT_DIR" -type f \( -iname '*.md' -o -iname '*.markdown' \) -print0)
+done < <(find "$SCRIPT_DIR" -type f \( -iname '*.md' -o -iname '*.markdown' \) ! -name 'REFERENCE-NOTES.md' -print0)
 
 if (( ${#URL_BY_NAME[@]} == 0 )); then
   echo "No remote Markdown image links found. Local asset references are not downloaded."
