@@ -3,19 +3,19 @@ kind: ReplicaSet
 metadata:
   name: nginx-rs
   labels:
-    env: demo
+    app: nginx-rs
 spec:
   replicas: 3
   selector:
     matchLabels:
-        env: demo
+      app: nginx-rs
   template:
     metadata:
       labels:
-        env: demo
+        app: nginx-rs
     spec:
       containers:
         - name: nginx
-          image: nginx
+          image: nginx:1.27
           ports:
             - containerPort: 80
