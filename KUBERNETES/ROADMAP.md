@@ -192,7 +192,10 @@ Practice from a clean cluster, work without copied solutions, and get comfortabl
 | [security/](security/) | ServiceAccount, RBAC and Pod security examples |
 | [networking/](networking/) | NetworkPolicy and Ingress examples |
 | [storage/](storage/) | PVC and Pod volume exercises |
-| [operations/](operations/) | Cluster maintenance, upgrades, etcd and administration notes |
+| [operations/](operations/) | Cluster maintenance, upgrades, etcd, administration and extended CKA topics |
+| [custom-resources/](custom-resources/) | CRD and custom-resource example |
+| [helm/](helm/) | Starter Helm chart |
+| [kustomize/](kustomize/) | Base manifests and development overlay |
 | [troubleshooting/](troubleshooting/) | Repeatable debugging workflow and fault drills |
 | [assets/](assets/) | Architecture and concept diagrams |
 
