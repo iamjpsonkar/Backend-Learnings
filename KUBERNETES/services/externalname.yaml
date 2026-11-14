@@ -5,7 +5,5 @@ metadata:
   labels:
     env: demo
 spec:
-  type: ExternalName 
-  selector:
-    app: nginx-deploy
+  type: ExternalName
   externalName: my.service.example.com
