@@ -1,0 +1,6 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kustomize-nginx
+spec:
+  replicas: 1
