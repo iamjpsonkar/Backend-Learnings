@@ -8,7 +8,7 @@ ASSET_DIR="${ASSET_DIR:-${SCRIPT_DIR}/assets}"
 FORCE=0
 [[ "${1:-}" == "--force" ]] && FORCE=1
 
-for cmd in curl find grep sed basename mktemp; do
+for cmd in curl find grep sed basename mktemp wc; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "ERROR: required command not found: $cmd" >&2; exit 1; }
 done
 mkdir -p "$ASSET_DIR"
