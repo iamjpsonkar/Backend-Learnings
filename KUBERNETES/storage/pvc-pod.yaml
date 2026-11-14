@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvc-consumer
+  namespace: demo
+spec:
+  containers:
+    - name: writer
+      image: busybox:1.36
+      command: ["sh", "-c", "while true; do date >> /data/heartbeat.log; sleep 10; done"]
+      volumeMounts:
+        - name: web-data
+          mountPath: /data
+  volumes:
+    - name: web-data
+      persistentVolumeClaim:
+        claimName: web-data-pvc
