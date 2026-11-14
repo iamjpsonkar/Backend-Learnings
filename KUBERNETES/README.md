@@ -44,7 +44,7 @@
 ## Kubelet - Node-level agent that helps container management and receives instructions from Api server
 ![Kubelet](./assets/kubelet.png)
 
-## Kube proxy - Pod to pod communication
+## kube-proxy - helps implement Service networking and forwards Service traffic to backend Pods
 ![Kube procy](./assets/kube_proxy.png)
 
 
@@ -191,9 +191,9 @@ CURRENT   NAME                CLUSTER             AUTHINFO            NAMESPACE
 kubectl config use-context kind-cka-cluster1
 ```
 
-### kubectl deleteing cluster
+### Deleting the kind cluster
 ```sh
-kind delete cluster --name kind-cka-cluster1
+kind delete cluster --name cka-cluster1
 ```
 
 ### kubectl running pod
@@ -878,7 +878,7 @@ replicaset.apps/nginx-deploy-5df7454d54   3         3         3       3m18s
 
 ### updating image
 ```sh
-kunectl set image deploy/nginx-deploy nginx=nginx:1.9.1
+kubectl set image deployment/nginx-deploy nginx=nginx:1.27
 ```
 
 ### checking deploy history
@@ -893,7 +893,7 @@ kubectl rollout undo deploy/nginx-deploy
 
 ### Create Yaml template
 ```sh
-kubectl create deploy deploy/nginx-deploy --image=nginx --dry-run=client -o yaml
+kubectl create deployment nginx-deploy --image=nginx --dry-run=client -o yaml
 ```
 
 # Kubectl services
@@ -1165,8 +1165,6 @@ metadata:
     env: demo
 spec:
   type: ExternalName 
-  selector:
-    app: nginx-deploy
   externalName: my.service.example.com
 ```
 
