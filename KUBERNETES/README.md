@@ -644,13 +644,15 @@ kind: ReplicationController
 metadata:
   name: nginx-rc
   labels:
-    env: demo
+    app: nginx-rc
 spec:
   replicas: 3
+  selector:
+    app: nginx-rc
   template:
     metadata:
       labels:
-        env: demo
+        app: nginx-rc
     spec:
       containers:
         - name: nginx
@@ -689,16 +691,16 @@ kind: ReplicaSet
 metadata:
   name: nginx-rs
   labels:
-    env: demo
+    app: nginx-rs
 spec:
   replicas: 3
   selector:
     matchLabels:
-        env: demo
+      app: nginx-rs
   template:
     metadata:
       labels:
-        env: demo
+        app: nginx-rs
     spec:
       containers:
         - name: nginx
