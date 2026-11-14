@@ -4,6 +4,8 @@ metadata:
   name: toleration-demo
   namespace: demo
 spec:
+  nodeSelector:
+    disktype: ssd
   tolerations:
     - key: dedicated
       operator: Equal
