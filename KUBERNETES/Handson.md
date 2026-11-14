@@ -8,7 +8,7 @@ Use either kind or Minikube for local exercises. Use kubeadm on Linux virtual ma
 
 ```bash
 # kind
-kind create cluster --name k8s-lab --config kind_cluster/kind-example-config.yaml
+kind create cluster --name k8s-lab --config services/kind.yaml
 
 # Verify
 kubectl config current-context
