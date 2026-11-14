@@ -1,0 +1,6 @@
+apiVersion: v2
+name: learning-nginx
+description: A small Helm chart for the Kubernetes learning repository
+type: application
+version: 0.1.0
+appVersion: "1.27"
