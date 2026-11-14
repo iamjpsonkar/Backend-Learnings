@@ -3,16 +3,18 @@ kind: ReplicationController
 metadata:
   name: nginx-rc
   labels:
-    env: demo
+    app: nginx-rc
 spec:
   replicas: 3
+  selector:
+    app: nginx-rc
   template:
     metadata:
       labels:
-        env: demo
+        app: nginx-rc
     spec:
       containers:
         - name: nginx
-          image: nginx
+          image: nginx:1.27
           ports:
             - containerPort: 80
