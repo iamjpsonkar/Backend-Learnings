@@ -1244,3 +1244,107 @@ nodeport-svc       NodePort       10.96.165.194   <none>                   80:30
 
 
 # Kubectl Namespace
+
+### What is a Namespace in Kubernetes
+
+- A namespace is a logical group of resources inside a cluster. Resource names must be unique within a namespace, but the same name can be reused in another namespace
+- Helps to avoid accidental deletion/modification, because you work on one namespace at a time
+- You can separate resources by team, environment, application and so on, and apply RBAC, resource quotas and network policies per namespace
+- A namespace does not isolate the network on its own. By default, a pod can reach pods and services in every other namespace. You need network policies (Day 26) to restrict that
+- Resources in the same namespace can reach a service by its short name, for example `svc-ns1`. To reach a service in another namespace, use `<service>.<namespace>` or the full DNS name `<service>.<namespace>.svc.cluster.local`
+- Not every resource lives in a namespace. Nodes, PersistentVolumes, StorageClasses, ClusterRoles and Namespaces themselves are cluster-scoped. Run `kubectl api-resources --namespaced=false` to see the full list
+
+![Namespaces](./assets/namespace.png)
+
+### Commands used in the video
+
+```bash
+kubectl get namespaces
+kubectl create namespace demo
+kubectl get pods -n demo
+kubectl get pods --all-namespaces        # or -A
+
+# set the default namespace for your current context
+kubectl config set-context --current --namespace=demo
+
+# deleting a namespace deletes everything inside it
+kubectl delete namespace demo
+```
+
+## Creating `namespace` using yaml
+
+### Create `ns.yaml` with below content
+```sh
+touch ns.yaml
+```
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+```
+
+### Create namespace
+```sh
+kubectl apply -f ns.yaml
+```
+
+### verify namespace
+```sh
+kubectl get namespaces
+```
+```txt
+NAME                 STATUS   AGE
+default              Active   2d16h
+demo                 Active   9s
+kube-node-lease      Active   2d16h
+kube-public          Active   2d16h
+kube-system          Active   2d16h
+local-path-storage   Active   2d16h
+```
+
+### Deleting a namespace
+```sh
+kubectl delete namespace demo
+```
+
+### verify deletion
+```sh
+kubectl get namespaces
+```
+```txt
+NAME                 STATUS   AGE
+default              Active   2d16h
+kube-node-lease      Active   2d16h
+kube-public          Active   2d16h
+kube-system          Active   2d16h
+local-path-storage   Active   2d16h
+```
+
+## Creating `namespace` using kubectl
+
+```sh
+kubectl create namespace demo
+```
+
+### Verify creation
+```sh
+kubectl get namespaces
+```
+```txt
+NAME                 STATUS   AGE
+default              Active   2d16h
+demo                 Active   4s
+kube-node-lease      Active   2d16h
+kube-public          Active   2d16h
+kube-system          Active   2d16h
+local-path-storage   Active   2d16h
+```
+
+## Creating resources
+
+While creating resource we need to pass `-n <namespace-name>` so that resource gets created in the passed namespace, else it will be created in defalt namespace
+
+
+# Multi container Pod
+
