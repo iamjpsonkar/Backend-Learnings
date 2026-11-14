@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kustomize-nginx
+spec:
+  selector:
+    app: kustomize-nginx
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
