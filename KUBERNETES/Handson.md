@@ -334,9 +334,6 @@ helm uninstall demo-web -n demo 2>/dev/null || true
 kubectl delete -k kustomize/overlays/dev --ignore-not-found
 kubectl delete -n demo -f custom-resources/student.yaml --ignore-not-found
 kubectl delete -f custom-resources/student-crd.yaml --ignore-not-found
-kubectl delete -n demo -f storage/pvc-pod.yaml --ignore-not-found
-kubectl delete -n demo -f storage/pvc.yaml --ignore-not-found
-
 # Temporary client Pod
 kubectl delete pod curl-client frontend-client -n demo --ignore-not-found
 
