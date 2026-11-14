@@ -95,7 +95,6 @@ For new applications, prefer Deployments over creating a ReplicaSet directly. Re
 The service examples select Pods labeled `app: nginx-deploy`. Deploy the matching application first:
 
 ```bash
-kubectl apply -n demo -f services/deploy.yaml
 kubectl get pods -n demo --show-labels
 ```
 
@@ -178,3 +177,144 @@ kind delete cluster --name k8s-lab
 Use [README.md](README.md) for the full topic checklist and [notes.md](notes.md) for the detailed concept guide. Follow the [CKA-2024 course](https://github.com/piyushsachdeva/CKA-2024/) for day-wise lectures, notes, and assignments.
 
 Do not mark a topic complete until you can explain it, implement it, verify it, and troubleshoot it independently.
+
+
+## 11. Configuration: ConfigMaps and Secrets
+
+The example Pod mounts an HTML file from a ConfigMap and exposes ConfigMap/Secret keys as environment variables.
+
+```bash
+kubectl apply -f configuration/configmap.yaml
+kubectl apply -f configuration/secret.yaml
+kubectl apply -f configuration/configured-pod.yaml
+kubectl get pod configured-nginx -n demo
+kubectl exec configured-nginx -n demo -- printenv APP_ENV
+kubectl exec configured-nginx -n demo -- printenv API_TOKEN
+kubectl exec configured-nginx -n demo -- cat /usr/share/nginx/html/index.html
+```
+
+The Secret contains a placeholder demo value. Do not put real credentials in this repository. Base64 encoding is not encryption.
+
+## 12. Workload controllers
+
+Run Jobs and CronJobs independently and inspect the Pods they create:
+
+```bash
+kubectl apply -f workloads/job.yaml
+kubectl get jobs,pods -n demo
+kubectl logs job/pi-calculation -n demo
+
+kubectl apply -f workloads/cronjob.yaml
+kubectl get cronjobs -n demo
+kubectl get jobs -n demo --watch
+```
+
+A CronJob runs on its schedule; wait for its next execution. DaemonSet and StatefulSet examples:
+
+```bash
+kubectl apply -f workloads/daemonset.yaml
+kubectl get daemonset,pods -n demo -o wide
+
+kubectl apply -f workloads/headless-service.yaml
+kubectl apply -f workloads/statefulset.yaml
+kubectl get statefulset,pods,pvc -n demo -o wide
+```
+
+StatefulSet PVCs require a suitable StorageClass or pre-created volumes. A local kind cluster may need a dynamic storage provisioner.
+
+## 13. Scheduling and resource controls
+
+For the node selector and required node-affinity examples, label at least one schedulable node:
+
+```bash
+kubectl get nodes
+kubectl label node <node-name> disktype=ssd --overwrite
+kubectl apply -f scheduling/node-selector-pod.yaml
+kubectl apply -f scheduling/affinity-pod.yaml
+kubectl get pods -n demo -o wide
+```
+
+For tolerations, taint a lab node, then schedule the tolerating Pod:
+
+```bash
+kubectl taint node <node-name> dedicated=cka:NoSchedule
+kubectl apply -f scheduling/toleration-pod.yaml
+kubectl describe pod toleration-demo -n demo
+```
+
+A toleration permits a Pod onto a matching tainted node; it does not force the Pod onto that node. Use a node selector or affinity rule too when you need that placement.
+
+Apply resource controls and priority examples:
+
+```bash
+kubectl apply -f scheduling/resources-pod.yaml
+kubectl apply -f scheduling/priorityclass.yaml
+kubectl apply -f scheduling/priority-pod.yaml
+kubectl apply -f scheduling/limitrange.yaml
+kubectl apply -f scheduling/resourcequota.yaml
+kubectl describe resourcequota demo-quota -n demo
+```
+
+## 14. RBAC and Pod Security
+
+Create a ServiceAccount with read-only Pod permissions:
+
+```bash
+kubectl apply -f security/serviceaccount.yaml
+kubectl apply -f security/role.yaml
+kubectl apply -f security/rolebinding.yaml
+kubectl auth can-i list pods --as=system:serviceaccount:demo:pod-reader -n demo
+kubectl auth can-i delete pods --as=system:serviceaccount:demo:pod-reader -n demo
+```
+
+The first authorization check should be allowed and the second denied.
+
+Apply the restricted Pod Security namespace and compliant Pod:
+
+```bash
+kubectl apply -f security/pod-security-namespace.yaml
+kubectl apply -f security/restricted-pod.yaml
+kubectl get pod restricted-pod -n secure-demo
+```
+
+## 15. NetworkPolicy
+
+NetworkPolicy enforcement depends on the CNI plugin. Confirm your cluster's CNI supports it before testing.
+
+```bash
+kubectl apply -f networking/default-deny-ingress.yaml
+kubectl apply -f networking/allow-frontend.yaml
+kubectl run frontend-client -n demo --image=busybox:1.36 --labels=role=frontend --restart=Never --command -- sleep 3600
+kubectl exec frontend-client -n demo -- wget -qO- http://cluster-svc
+kubectl get networkpolicies -n demo
+```
+
+The allow policy permits ingress to the matching nginx Pods only from Pods labeled `role=frontend` on TCP port 80. NetworkPolicies are additive; inspect all policies selecting a Pod when debugging.
+
+## 16. Storage, Ingress, Helm, Kustomize and CRDs
+
+See [operations/EXTENDED-TOPICS.md](operations/EXTENDED-TOPICS.md) for prerequisites and step-by-step commands covering StorageClasses/PVCs, Gateway API, Helm, Kustomize, CRDs, operators, Pod Security and metrics.
+
+Selected hands-on commands:
+
+```bash
+# Persistent storage (requires a default StorageClass / provisioner)
+kubectl apply -f storage/pvc.yaml
+kubectl apply -f storage/pvc-pod.yaml
+kubectl get pvc,pods -n demo
+
+# Kustomize
+kubectl kustomize kustomize/overlays/dev
+kubectl apply -k kustomize/overlays/dev
+
+# Custom resource (CRD must be applied first)
+kubectl apply -f custom-resources/student-crd.yaml
+kubectl apply -f custom-resources/student.yaml
+kubectl get students -n demo
+
+# Helm
+helm lint helm/nginx
+helm template demo-web helm/nginx
+```
+
+An Ingress object requires an installed Ingress controller. A Gateway API resource requires Gateway API CRDs and a compatible controller. The manifest alone does not create a working data plane.
